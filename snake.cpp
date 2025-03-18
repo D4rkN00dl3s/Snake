@@ -1,6 +1,8 @@
 #include <iostream>
 #include <cstdlib>
 #include <unistd.h>    // For read()
+#include <deque>
+#include <utility>
 #include <termios.h>   // For setting terminal attributes
 #include <csignal>
 
@@ -11,7 +13,6 @@ using namespace std;
 #else
     #include <sys/ioctl.h>
     #include <unistd.h>
-#include "snake.h"
 #endif
 
 void getTerminalSize(int &rows, int &cols) {
@@ -50,44 +51,59 @@ void moveCursorTo(int row, int col) {
     cout << "\033[" << row << ";" << col << "H";
 }
 
-void CreateFoodPosition(int row, int col, int &fx, int &fy){
+// Global Variables
+int rows = 0, cols = 0;
+int fx = 0, fy = 0;
+char ch;
+bool run = true;
+deque<pair<int, int>> snake;
+
+void CreateFoodPosition(int row, int col){
     fx = rand() % col;
     fy = rand() % row;
 }
 
-void CreateFood (int fx, int fy){
+void CreateFood (){
     moveCursorTo(fy, fx);
-    cout << "F" << endl;
+    cout << "@" << endl;
 }
 
-void UpdateLastPosition(int &lastRow, int &lastCol, int currRow, int currCol){
-    lastRow = currRow;
-    lastCol = currCol;
+void DrawSnake() {
+    for (const auto &part : snake) {
+        moveCursorTo(part.first, part.second);
+        cout << "S";
+    }
+    cout.flush();
 }
 
-void UpdateSnake(int lastRow, int lastCol, int currRow, int currCol)
-{
-    moveCursorTo(lastRow, lastCol);
-    cout << " " << flush;
-    moveCursorTo(currRow, currCol);
-    cout << "S" << flush;
+void UpdateSnake(int currRow, int currCol) {
+    // Add new head to the snake
+    snake.push_front({currRow, currCol});
+
+    // Check if food was eaten
+    if (currRow == fy && currCol == fx) {
+        // Create new food
+        CreateFoodPosition(rows, cols);
+        CreateFood();
+    } else {
+        // Remove the last tail position (shrink)
+        pair<int, int> tail = snake.back();
+        snake.pop_back();
+        moveCursorTo(tail.first, tail.second);
+        cout << " ";  // Erase last part
+    }
+    DrawSnake();
 }
 
 int main() {
     system("clear");
     enableRawMode();
 
-    int rows = 0, cols = 0;
     getTerminalSize(rows, cols);
 
-    // Global Variables
     int midRow = rows / 2;
     int midCol = cols / 2;
-    int currRow = midRow, currCol = midCol;
-    int lastRow, lastCol;
-    int fx = 0, fy = 0;
-    char ch;
-    bool run = true;
+    snake.push_back({midRow, midCol});
 
     //Snake Starting Point
     moveCursorTo(midRow, midCol);
@@ -96,34 +112,25 @@ int main() {
     srand(static_cast<unsigned int>(time(0)));
 
     //Create First Food
-    CreateFoodPosition(rows, cols, fx, fy);
-    CreateFood(fx, fy);
+    CreateFoodPosition(rows, cols);
+    CreateFood();
 
     //Main Game Loop
     while (run) {
         if (read(STDIN_FILENO, &ch, 1) > 0) {  // Read key press
-            UpdateLastPosition(lastRow, lastCol, currRow, currCol);
-            switch (ch)
-            {
-            case 'd':
-                currCol++;
-                break;
-            case 'a':
-                currCol--;
-                break;
-            case 'w':
-                currRow--;
-                break;
-            case 's':
-                currRow++;
-                break;
-            case 'q':
-                run = false;
-                break;
-            default:
-                break;
+            int currRow = snake.front().first;
+            int currCol = snake.front().second;
+
+            switch (ch) {
+                case 'd': currCol++; break;
+                case 'a': currCol--; break;
+                case 'w': currRow--; break;
+                case 's': currRow++; break;
+                case 'q': run = false; break;
+                default: continue;
             }
-            UpdateSnake(lastRow, lastCol, currRow, currCol);
+
+            UpdateSnake(currRow, currCol);
         }
     }
 
