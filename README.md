@@ -1,11 +1,12 @@
 # Snake Game in C++
 A simple implementation of the Snake game in C++ that runs in the terminal. The game uses raw terminal input for controlling the snake and displays the game with borders, food, and snake movement.
+
 Features
 
-    - The snake is controlled using the keyboard arrows (w, a, s, d).
-    - The snake grows when it eats food, which is represented by the @ symbol.
-    - The game ends if the snake collides with the border.
-    - Terminal-based game with dynamic sizing to fit the terminal window.
+- The snake is controlled using the keyboard arrows (w, a, s, d).
+- The snake grows when it eats food, which is represented by the @ symbol.
+- The game ends if the snake collides with the border.
+- Terminal-based game with dynamic sizing to fit the terminal window.
 
 Requirements
 
