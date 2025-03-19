@@ -1,43 +1,57 @@
 # Snake Game in C++
-A simple implementation of the Snake game in C++ that runs in the terminal. The game uses raw terminal input for controlling the snake and displays the game with borders, food, and snake movement.
 
-Features
+A simple and interactive snake game implemented in C++. This game works cross-platform, meaning it runs on both Windows and UNIX-like systems (Linux/macOS). The game uses basic terminal control techniques for rendering and user input.
 
-- The snake is controlled using the keyboard arrows (w, a, s, d).
-- The snake grows when it eats food, which is represented by the @ symbol.
-- The game ends if the snake collides with the border.
-- Terminal-based game with dynamic sizing to fit the terminal window.
+## **Features**
 
-Requirements
+- Cross-platform compatibility: Windows and UNIX-based systems (Linux/macOS)
+- Terminal-based interface with customizable snake and food colors
+- Real-time gameplay with arrow key controls for moving the snake
+- Automatic snake movement, food spawning, and border handling
+- Non-blocking input to ensure smooth game mechanics
+- Ability to quit the game by pressing 'q'
 
-    - A terminal or command-line environment.
-    - A Unix-like operating system (Linux, macOS) or Windows (with windows.h support).
-    - Basic C++ compiler support (e.g., g++).
+## **Requirements**
 
-Controls
+- Unix system (Linux/macOS), Windows OS
+- A terminal with support for ANSI escape codes
 
-    w – Move Up
-    a – Move Left
-    s – Move Down
-    d – Move Right
-    q – Quit the Game
+<br>
 
-How It Works
+## **Installation**
 
-    - Terminal Size: 
-    The game dynamically adjusts the game area based on the current terminal size. It centers the game in the terminal window.
-    - Raw Mode: 
-    The terminal is set to "raw" mode so that key presses are registered immediately without needing to press Enter.
-    - Game Loop: 
-    The main game loop updates the snake's position, checks for collisions, and draws the game state after each movement.
-    - Snake and Food: 
-    The snake is a deque data structure that grows in size when food is eaten. The food is placed randomly within the borders.
+1. Go to the [Releases page](https://github.com/D4rkN00dl3s/Snake/releases) of this repository.
 
-Game Logic
+2. Choose the appropriate `.tar` archive for your operating system:
+    - For Windows: `snake_game_win.tar`
+    - For Linux/macOS: `snake_game_linux.tar`
 
-    - Movement: 
-    The snake's direction is controlled by the w, a, s, d keys. The snake moves one unit at a time and grows if it eats food.
-    - Border Collision: 
-    If the snake hits the border, the game ends.
-    - Food Collision: 
-    If the snake eats the food (represented by @), the snake grows, and new food is placed in a random location.
+3. Download and extract the `.tar` archive:
+    ```bash
+    tar -xvf snake_game_win.tar    # For Windows
+    tar -xvf snake_game_linux.tar  # For Linux/macOS
+    ```
+
+4. Run the game:
+    - **Windows**: Execute `snake_game_win.exe`.
+    - **Linux/macOS**: Execute `./snake_game_linux`.
+
+<br>
+
+## **Controls**
+
+- **W** – Move Up
+- **A** – Move Left
+- **S** – Move Down
+- **D** – Move Right
+- **Q** – Quit the Game
+
+## **Game Preview**
+
+Here’s what the game might look like when played in the terminal:
+
+![snake](https://github.com/user-attachments/assets/8e404f70-5eac-41bf-9f2b-b0b1c0523b88)
+
+
+- **S** represents the snake's head, and **@** represents the food.
+- The snake moves and grows as it eats the food.
