@@ -118,7 +118,7 @@ void UpdateSnake(int top, int left) {
     int currCol = snake.front().second + dy[dirIndex];
 
     if (currRow < top || currRow >= top + borderHeight ||
-        currCol < left || currCol >= left + borderWidth) {
+        currCol <= left || currCol >= left + borderWidth) {
         run = false;
         return;
     }
