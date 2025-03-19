@@ -1,21 +1,20 @@
 #include <iostream>
-#include <cstdlib>
-#include <unistd.h>    // For read()
 #include <deque>
-#include <utility>
-#include <termios.h>   // For setting terminal attributes
-#include <csignal>
-#include <fcntl.h>
+#include <ctime>
+
+#ifdef _WIN32
+    #include <conio.h>  // For _kbhit() and _getch()
+    #include <windows.h> // For Sleep()
+#else
+    #include <unistd.h>  // For read() and usleep()
+    #include <termios.h> // For terminal settings
+    #include <fcntl.h>
+    #include <sys/ioctl.h>
+#endif
 
 using namespace std;
 
-#ifdef _WIN32
-    #include <windows.h>
-#else
-    #include <sys/ioctl.h>
-    #include <unistd.h>
-#endif
-
+// Cross-platform function to get terminal size
 void getTerminalSize(int &rows, int &cols) {
     #ifdef _WIN32
         CONSOLE_SCREEN_BUFFER_INFO csbi;
@@ -32,32 +31,35 @@ void getTerminalSize(int &rows, int &cols) {
     #endif
 }
 
-struct termios original_termios;
-
-void restoreTerminalSettings() {
-    system("clear");
-    cout << "Terminating program" << endl;
-    tcsetattr(STDIN_FILENO, TCSANOW, &original_termios);
-}
-
-void enableRawMode() {
-    tcgetattr(STDIN_FILENO, &original_termios);  // Get current settings
-    struct termios raw = original_termios;
-    raw.c_lflag &= ~(ICANON | ECHO);  // Disable canonical mode & echo
-    tcsetattr(STDIN_FILENO, TCSANOW, &raw);  // Apply changes
-
-    // Ensure restoration on exit
-    atexit(restoreTerminalSettings);
-}
-
-void setNonBlockingInput() {
-    int flags = fcntl(STDIN_FILENO, F_GETFL, 0);
-    fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK);
-}
-
+// Cross-platform function to move cursor
 void moveCursorTo(int row, int col) {
-    cout << "\033[" << row << ";" << col << "H";
+    printf("\033[%d;%dH", row, col);
 }
+
+#ifdef _WIN32
+    void setNonBlockingInput() {} // No need for non-blocking input on Windows
+#else
+    struct termios original_termios;
+
+    void restoreTerminalSettings() {
+        printf("\033[H\033[J");
+        cout << "Terminating program" << endl;
+        tcsetattr(STDIN_FILENO, TCSANOW, &original_termios);
+    }
+
+    void enableRawMode() {
+        tcgetattr(STDIN_FILENO, &original_termios);
+        struct termios raw = original_termios;
+        raw.c_lflag &= ~(ICANON | ECHO);
+        tcsetattr(STDIN_FILENO, TCSANOW, &raw);
+        atexit(restoreTerminalSettings);
+    }
+
+    void setNonBlockingInput() {
+        int flags = fcntl(STDIN_FILENO, F_GETFL, 0);
+        fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK);
+    }
+#endif
 
 // Global Variables
 int rows = 0, cols = 0;
@@ -68,125 +70,129 @@ char dir = 'd';
 bool run = true;
 deque<pair<int, int>> snake;
 
-void CreateFoodPosition(int top, int left){
-    fx = left + rand() % (borderWidth - 2);
-    fy = top + rand() % (borderHeight - 2);
-}
-
-void CreateFood (){
+// Food placement
+void CreateFood(int top, int left) {
+    fx = left + 1 + rand() % (borderWidth - 2);
+    fy = top + 1 + rand() % (borderHeight - 2);
     moveCursorTo(fy, fx);
-    cout << "@" << flush;
+    printf("\033[31m@\033[0m");
 }
 
-void DrawBorders(int top, int left){
-    // Draw top border
-    moveCursorTo(top-1, left);
-    for (int i = 0; i < borderWidth; i++) {
-        cout << "_" << flush;
-    }
-
-    // Draw bottom border
+// Draw game borders
+void DrawBorders(int top, int left) {
+    string border(static_cast<size_t>(borderWidth), '_');
+    moveCursorTo(top - 1, left);
+    cout << border;
     moveCursorTo(top + borderHeight, left);
-    for (int i = 0; i < borderWidth; i++) {
-        cout << "_" << flush;
-    }
+    cout << border;
 
-    // Draw left and right borders
     for (int i = 0; i <= borderHeight; i++) {
         moveCursorTo(top + i, left);
-        cout << "|" << flush;
+        cout << "|";
         moveCursorTo(top + i, left + borderWidth);
-        cout << "|" << flush;
-    }
-}
-
-void DrawSnake() {
-    for (const auto &part : snake) {
-        moveCursorTo(part.first, part.second);
-        cout << "S";
+        cout << "|";
     }
     cout.flush();
 }
 
-void UpdateSnake(int top, int left) {
-    int currRow = snake.front().first;
-    int currCol = snake.front().second;
-
-    switch (dir) {
-        case 'd': currCol++; break;
-        case 'a': currCol--; break;
-        case 'w': currRow--; break;
-        case 's': currRow++; break;
+// Draw snake
+void DrawSnake() {
+    for (const auto &part : snake) {
+        moveCursorTo(part.first, part.second);
+        printf("\033[32mS\033[0m");
     }
+    cout.flush();
+}
 
-    // Check if snake hits the border
-    if (currRow <= top || currRow >= top + borderHeight || currCol <= left || currCol >= left + borderWidth) {
-        run = false;  // Game Over: Snake hits the border
+// Update snake position
+void UpdateSnake(int top, int left) {
+    static int dx[] = {-1, 1, 0, 0};
+    static int dy[] = {0, 0, -1, 1};
+    static char dirs[] = {'w', 's', 'a', 'd'};
+
+    int dirIndex = 0;
+    for (; dirIndex < 4; ++dirIndex)
+        if (dir == dirs[dirIndex]) break;
+
+    int currRow = snake.front().first + dx[dirIndex];
+    int currCol = snake.front().second + dy[dirIndex];
+
+    if (currRow < top || currRow >= top + borderHeight ||
+        currCol < left || currCol >= left + borderWidth) {
+        run = false;
         return;
     }
 
-    // Add new head to the snake
     snake.push_front({currRow, currCol});
-
-    // Check if food was eaten
     if (currRow == fy && currCol == fx) {
-        // Create new food
-        CreateFoodPosition(top, left);
-        CreateFood();
+        CreateFood(top, left);
     } else {
-        // Remove the last tail position (shrink)
-        pair<int, int> tail = snake.back();
+        moveCursorTo(snake.back().first, snake.back().second);
+        cout << " ";
         snake.pop_back();
-        moveCursorTo(tail.first, tail.second);
-        cout << " ";  // Erase last part
     }
-
     DrawSnake();
 }
 
+// Read keyboard input (cross-platform)
+char getInput() {
+    #ifdef _WIN32
+        if (_kbhit()) {
+            return _getch();
+        }
+    #else
+        char ch;
+        if (read(STDIN_FILENO, &ch, 1) > 0) {
+            return ch;
+        }
+    #endif
+    return '\0';
+}
+
 int main() {
-    system("clear");
-    enableRawMode();
-    setNonBlockingInput();
+    printf("\033[H\033[J");
+
+    #ifndef _WIN32
+        enableRawMode();
+        setNonBlockingInput();
+    #endif
 
     getTerminalSize(rows, cols);
 
     int top = (rows - borderHeight) / 2;
     int left = (cols - borderWidth) / 2;
-
     int midRow = rows / 2;
     int midCol = cols / 2;
 
     DrawBorders(top, left);
 
     snake.push_back({midRow, midCol});
-
-    //Snake Starting Point
     moveCursorTo(midRow, midCol);
     cout << "S" << endl;
 
     srand(static_cast<unsigned int>(time(0)));
+    CreateFood(top, left);
 
-    //Create First Food
-    CreateFoodPosition(top, left);
-    CreateFood();
-
-    //Main Game Loop
+    // Main Game Loop
     while (run) {
-        char ch;
-        if (read(STDIN_FILENO, &ch, 1) > 0) {  // Read key press
+        char ch = getInput();
+        if (ch) { // If key is pressed
             switch (ch) {
-                case 'd': if(dir != 'a') dir = 'd'; break;
-                case 'a': if(dir != 'd') dir = 'a'; break;
-                case 'w': if(dir != 's') dir = 'w'; break;
-                case 's': if(dir != 'w') dir = 's'; break;
+                case 'd': if (dir != 'a') dir = 'd'; break;
+                case 'a': if (dir != 'd') dir = 'a'; break;
+                case 'w': if (dir != 's') dir = 'w'; break;
+                case 's': if (dir != 'w') dir = 's'; break;
                 case 'q': run = false; break;
             }
         }
 
         UpdateSnake(top, left);
 
-        usleep(150000); // Delay for movement speed 150ms
+        #ifdef _WIN32
+            Sleep(150);  // Windows
+        #else
+            usleep(150000); // Linux/macOS
+        #endif
     }
 
     return 0;
