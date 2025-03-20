@@ -141,11 +141,16 @@ char getInput()
     {
         return ch;
     }
+    return '\0';
 }
 
 int main()
 {
     printf("\033[H\033[J");
+
+    enableRawMode();
+    setNonBlockingInput();
+
     getTerminalSize(rows, cols);
 
     int top = (rows - borderHeight) / 2;
