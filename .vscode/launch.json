@@ -8,8 +8,8 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": false,
-      "cwd": "/home/d4rkn00dl3s/Documents/Github/Snake",
-      "program": "/home/d4rkn00dl3s/Documents/Github/Snake/build/Debug/outDebug",
+      "cwd": "/home/d4rkn00dl3s/Documents/Github/Snake/snake_unix",
+      "program": "/home/d4rkn00dl3s/Documents/Github/Snake/snake_unix/build/Debug/outDebug",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [
