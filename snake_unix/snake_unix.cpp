@@ -5,8 +5,15 @@
 #include <termios.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
+#include <unordered_set>
 
 using namespace std;
+
+struct pair_hash {
+    size_t operator()(const pair<int, int>& p) const {
+        return hash<int>()(p.first) ^ (hash<int>()(p.second) << 1);
+    }
+};
 
 int rows = 0, cols = 0;
 int fx = 0, fy = 0;
@@ -17,6 +24,7 @@ enum class Direction { UP, DOWN, LEFT, RIGHT };
 Direction dir = Direction::RIGHT; // initial direction
 bool run = true;
 deque<pair<int, int>> snake;
+unordered_set<pair<int, int>, pair_hash> snakeBody;
 
 struct termios original_termios;
 
@@ -142,6 +150,7 @@ void UpdateSnake(int top, int left) {
 
     int newRow = snake.front().first + dx;
     int newCol = snake.front().second + dy;
+    pair<int, int> newHead = {newRow, newCol};
 
     // Border collision check
     if (newRow < top || newRow >= top + borderHeight || newCol <= left || newCol >= left + borderWidth) {
@@ -150,22 +159,24 @@ void UpdateSnake(int top, int left) {
     }
 
     // Self-collision check
-    for (const auto &segment : snake) {
-        if (segment.first == newRow && segment.second == newCol) {
-            run = false;
-            return;
-        }
+    if (snakeBody.count(newHead)) {
+        run = false;
+        return;
     }
 
-    snake.push_front({newRow, newCol});
+    snake.push_front(newHead);
+    snakeBody.insert(newHead);
 
     if (newRow == fy && newCol == fx) {
         score++;
         CreateFood(top, left);
     } else {
-        moveCursorTo(snake.back().first, snake.back().second);
+        // Remove tail
+        auto tail = snake.back();
+        moveCursorTo(tail.first, tail.second);
         cout << " ";
         snake.pop_back();
+        snakeBody.erase(tail);  // <- REMOVE from set
     }
 
     DrawSnake();
@@ -186,7 +197,11 @@ void initializeGame(int &top, int &left) {
 
     int midRow = rows / 2;
     int midCol = cols / 2;
-    snake.push_back({midRow, midCol});
+    pair<int, int> start = {midRow, midCol};
+
+    snake.push_back(start);
+    snakeBody.insert(start);  // <- ADD to set
+
     moveCursorTo(midRow, midCol);
     cout << "S" << endl;
 
