@@ -1,20 +1,15 @@
 #include <iostream>
-#include <deque>
+#include <vector>
+#include <unordered_set>
 #include <ctime>
 #include <unistd.h>
 #include <termios.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
-#include <unordered_set>
 
 using namespace std;
 
-struct pair_hash {
-    size_t operator()(const pair<int, int>& p) const {
-        return hash<int>()(p.first) ^ (hash<int>()(p.second) << 1);
-    }
-};
-
+const int MAX_SNAKE_LENGTH = 1000;
 int rows = 0, cols = 0;
 int fx = 0, fy = 0;
 int borderWidth = 60;
@@ -23,8 +18,41 @@ unsigned int score = 0;
 enum class Direction { UP, DOWN, LEFT, RIGHT };
 Direction dir = Direction::RIGHT; // initial direction
 bool run = true;
-deque<pair<int, int>> snake;
+
+pair<int, int> snakeBuffer[MAX_SNAKE_LENGTH];
+int head = 0, tail = 0, snakeSize = 0;
+struct pair_hash {
+    size_t operator()(const pair<int, int>& p) const {
+        return hash<int>()(p.first) ^ (hash<int>()(p.second) << 1);
+    }
+};
+
 unordered_set<pair<int, int>, pair_hash> snakeBody;
+
+int mod(int x) {
+    return (x + MAX_SNAKE_LENGTH) % MAX_SNAKE_LENGTH;
+}
+
+void push_front(pair<int, int> pos) {
+    head = mod(head - 1);
+    snakeBuffer[head] = pos;
+    snakeSize++;
+    snakeBody.insert(pos);
+}
+
+void pop_back() {
+    tail = mod(tail - 1);
+    snakeBody.erase(snakeBuffer[tail]);
+    snakeSize--;
+}
+
+pair<int, int> get_front() {
+    return snakeBuffer[head];
+}
+
+pair<int, int> get_back() {
+    return snakeBuffer[mod(tail - 1)];
+}
 
 struct termios original_termios;
 
@@ -55,6 +83,8 @@ void restoreTerminalSettings() {
     cout << "Terminating program" << endl;
     cout << "Your final score => " << score << endl;
     tcsetattr(STDIN_FILENO, TCSANOW, &original_termios);
+    printf("\033[?25h");
+    fflush(stdout);
 }
 
 void enableRawMode() {
@@ -91,15 +121,19 @@ void DrawBorders(int top, int left) {
 }
 
 void CreateFood(int top, int left) {
-    fx = left + 1 + rand() % (borderWidth - 2);
-    fy = top + 1 + rand() % (borderHeight - 2);
+    do {
+        fx = left + 1 + rand() % (borderWidth - 2);
+        fy = top + 1 + rand() % (borderHeight - 2);
+    } while (snakeBody.count({fy, fx}) > 0);
+
     moveCursorTo(fy, fx);
     printf("\033[31m@\033[0m");
 }
 
 void DrawSnake() {
-    for (const auto &part : snake) {
-        moveCursorTo(part.first, part.second);
+    for (int i = 0; i < snakeSize; ++i) {
+        auto pos = snakeBuffer[mod(head + i)];
+        moveCursorTo(pos.first, pos.second);
         printf("\033[32mS\033[0m");
     }
     cout.flush();
@@ -142,41 +176,35 @@ void handleInput(char ch) {
 void UpdateSnake(int top, int left) {
     int dx = 0, dy = 0;
     switch (dir) {
-        case Direction::UP: dx = -1; break;
-        case Direction::DOWN: dx = 1; break;
-        case Direction::LEFT: dy = -1; break;
-        case Direction::RIGHT: dy = 1; break;
+        case Direction::UP:    dx = -1; break;
+        case Direction::DOWN:  dx = 1;  break;
+        case Direction::LEFT:  dy = -1; break;
+        case Direction::RIGHT: dy = 1;  break;
     }
 
-    int newRow = snake.front().first + dx;
-    int newCol = snake.front().second + dy;
+    pair<int, int> currentHead = get_front();
+    int newRow = currentHead.first + dx;
+    int newCol = currentHead.second + dy;
     pair<int, int> newHead = {newRow, newCol};
 
-    // Border collision check
-    if (newRow < top || newRow >= top + borderHeight || newCol <= left || newCol >= left + borderWidth) {
+    // Collision
+    if (newRow < top || newRow >= top + borderHeight ||
+        newCol <= left || newCol >= left + borderWidth ||
+        snakeBody.count(newHead)) {
         run = false;
         return;
     }
 
-    // Self-collision check
-    if (snakeBody.count(newHead)) {
-        run = false;
-        return;
-    }
-
-    snake.push_front(newHead);
-    snakeBody.insert(newHead);
+    // Move
+    push_front(newHead);
 
     if (newRow == fy && newCol == fx) {
         score++;
         CreateFood(top, left);
     } else {
-        // Remove tail
-        auto tail = snake.back();
-        moveCursorTo(tail.first, tail.second);
+        moveCursorTo(get_back().first, get_back().second);
         cout << " ";
-        snake.pop_back();
-        snakeBody.erase(tail);  // <- REMOVE from set
+        pop_back();
     }
 
     DrawSnake();
@@ -191,19 +219,18 @@ void initializeTerminal() {
 }
 
 void initializeGame(int &top, int &left) {
+    getTerminalSize(rows, cols);
     top = (rows - borderHeight) / 2;
     left = (cols - borderWidth) / 2;
+
     DrawBorders(top, left);
 
     int midRow = rows / 2;
     int midCol = cols / 2;
     pair<int, int> start = {midRow, midCol};
 
-    snake.push_back(start);
-    snakeBody.insert(start);  // <- ADD to set
-
-    moveCursorTo(midRow, midCol);
-    cout << "S" << endl;
+    push_front(start);
+    moveCursorTo(midRow, midCol); cout << "S" << endl;
 
     srand(static_cast<unsigned int>(time(0)));
     CreateFood(top, left);
