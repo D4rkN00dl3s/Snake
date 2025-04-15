@@ -108,6 +108,7 @@ char getInput() {
     return '\0';
 }
 
+
 void DrawBorders(int top, int left) {
     string border(static_cast<size_t>(borderWidth), '_');
     moveCursorTo(top - 1, left); cout << border;
@@ -149,7 +150,45 @@ Direction charToDirection(char ch) {
     }
 }
 
+void pauseMenu() {
+    clearTerminal();
+    moveCursorTo(rows / 2 - 1, cols / 2 - 10); cout << "=== GAME PAUSED ===";
+    moveCursorTo(rows / 2, cols / 2 - 10);     cout << "1. Continue";
+    moveCursorTo(rows / 2 + 1, cols / 2 - 10); cout << "2. Settings";
+    moveCursorTo(rows / 2 + 2, cols / 2 - 10); cout << "3. Exit";
+    cout.flush();
+
+    while (true) {
+        char ch = getInput();
+        if (ch == '1') {
+            clearTerminal();
+            DrawBorders((rows - borderHeight) / 2, (cols - borderWidth) / 2);
+            DrawSnake();
+            moveCursorTo(fy, fx);
+            printf("\033[31m@\033[0m");
+            fflush(stdout);
+            break; // Continue game
+        } else if (ch == '2') {
+            clearTerminal();
+            moveCursorTo(rows / 2, cols / 2 - 10);
+            cout << "[Settings not implemented yet. Press any key to go back]";
+            cout.flush();
+            while (getInput() == '\0') usleep(10000);
+            return pauseMenu(); // Go back to pause menu
+        } else if (ch == '3') {
+            run = false;
+            break; // Exit game
+        }
+        usleep(10000); // Small delay to prevent CPU overuse
+    }
+}
+
 void handleInput(char ch) {
+    if (ch == '\033') { // ESC key
+        pauseMenu();
+        return;
+    }
+
     Direction newDir = charToDirection(ch);
     switch (newDir) {
         case Direction::UP:
