@@ -93,8 +93,6 @@ void getTerminalSize(int &rows, int &cols)
 void restoreTerminalSettings()
 {
     clearTerminal();
-    cout << "Terminating program" << endl;
-    cout << "Your final score => " << score << endl;
     tcsetattr(STDIN_FILENO, TCSANOW, &original_termios);
     printf("\033[?25h");
     fflush(stdout);
@@ -118,8 +116,37 @@ void setNonBlockingInput()
 char getInput()
 {
     char ch;
-    if (read(STDIN_FILENO, &ch, 1) > 0)
+    if (read(STDIN_FILENO, &ch, 1) == 1)
+    {
+        if (ch == '\033') // possible ESC or arrow key
+        {
+            // Wait 30ms to see if more characters follow
+            usleep(30000);
+
+            char seq[2];
+            int n = read(STDIN_FILENO, seq, 2);
+
+            if (n == 0)
+            {
+                return '\033'; // ESC key pressed
+            }
+            else if (n == 2 && seq[0] == '[')
+            {
+                switch (seq[1])
+                {
+                case 'A':
+                    return 'w'; // Up
+                case 'B':
+                    return 's'; // Down
+                case 'C':
+                    return 'd'; // Right
+                case 'D':
+                    return 'a'; // Left
+                }
+            }
+        }
         return ch;
+    }
     return '\0';
 }
 
@@ -174,7 +201,7 @@ bool gameOverScreen()
     // Blinking GAME OVER animation
     for (int i = 0; i < 6; ++i)
     {
-        moveCursorTo(centerRow - 2, centerCol);
+        moveCursorTo(centerRow, centerCol);
         if (i % 2 == 0)
             cout << "\033[5;31m=== GAME OVER ===\033[0m"; // Bright red, blinking
         else
@@ -354,6 +381,10 @@ void settingsMenu()
         cout.flush();
 
         char ch = getInput();
+
+        if (ch == '\033') // ESC key
+            return;
+
         if (ch == '1')
         {
             clearTerminal();
@@ -466,7 +497,7 @@ void pauseMenu()
     while (true)
     {
         char ch = getInput();
-        if (ch == '1')
+        if (ch == '1' || ch == '\033')
         {
             totalPausedTime += chrono::steady_clock::now() - pauseStart;
             clearTerminal();
@@ -651,7 +682,7 @@ int main()
         }
         else
         {
-            break; // Exit immediately if player chose to quit manually
+            break;
         }
     }
 
