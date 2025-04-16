@@ -26,6 +26,7 @@ enum class Direction
 };
 Direction dir = Direction::RIGHT;
 bool run = true;
+bool playerLost = false;
 
 // Settings Variables
 int snakeSpeed = 150000;
@@ -163,6 +164,71 @@ void drawSidebar(int top, int left)
 
     cout.flush();
 }
+
+bool gameOverScreen()
+{
+    clearTerminal();
+    int centerRow = rows / 2;
+    int centerCol = cols / 2 - 10;
+
+    // Blinking GAME OVER animation
+    for (int i = 0; i < 6; ++i)
+    {
+        moveCursorTo(centerRow - 2, centerCol);
+        if (i % 2 == 0)
+            cout << "\033[5;31m=== GAME OVER ===\033[0m"; // Bright red, blinking
+        else
+            cout << "                  "; // Clear text
+
+        cout.flush();
+        usleep(300000); // 300ms
+    }
+
+    moveCursorTo(centerRow - 2, centerCol);
+    cout << "\033[5;31m=== GAME OVER ===\033[0m";
+
+    moveCursorTo(centerRow, centerCol);
+    cout << "Your final score: " << score;
+
+    moveCursorTo(centerRow + 2, centerCol);
+    cout << "1. Restart";
+
+    moveCursorTo(centerRow + 3, centerCol);
+    cout << "2. Exit Game";
+
+    cout.flush();
+
+    while (true)
+    {
+        char ch = getInput();
+        if (ch == '1')
+        {
+            // Countdown animation
+            for (int i = 3; i >= 1; --i)
+            {
+                moveCursorTo(centerRow + 5, centerCol);
+                cout << "\033[33mRestarting in " << i << "...\033[0m ";
+                cout.flush();
+                usleep(1000000); // 1 second
+            }
+
+            run = true;
+            score = 0;
+            dir = Direction::RIGHT;
+            foodPositions.clear();
+            head = tail = snakeSize = 0;
+            snakeBody.clear();
+            clearTerminal();
+            return true; // Restart
+        }
+        else if (ch == '2')
+        {
+            return false; // Exit
+        }
+        usleep(10000);
+    }
+}
+
 
 void CreateFood(int top, int left)
 {
@@ -422,6 +488,7 @@ void pauseMenu()
         else if (ch == '3')
         {
             run = false;
+            playerLost = false;
             break;
         }
         usleep(10000);
@@ -489,6 +556,7 @@ void UpdateSnake(int top, int left)
         newCol <= left || newCol >= left + borderWidth ||
         snakeBody.count(newHead))
     {
+        playerLost = true;
         run = false;
         return;
     }
@@ -570,10 +638,22 @@ int main()
 {
     initializeTerminal();
 
-    int top, left;
-    initializeGame(top, left);
+    while (true)
+    {
+        int top, left;
+        initializeGame(top, left);
+        gameLoop(top, left);
 
-    gameLoop(top, left);
+        if (playerLost)
+        {
+            if (!gameOverScreen())
+                break;
+        }
+        else
+        {
+            break; // Exit immediately if player chose to quit manually
+        }
+    }
 
     return 0;
 }
