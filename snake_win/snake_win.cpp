@@ -1,4 +1,3 @@
-// WINDOWS VERSION WITH LINUX FEATURES
 #include <iostream>
 #include <vector>
 #include <unordered_set>
@@ -11,31 +10,29 @@
 #define FOREGROUND_WHITE (FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE)
 
 using namespace std;
-using namespace chrono;
 
 const int MAX_SNAKE_LENGTH = 1000;
 int rows = 25, cols = 80;
-int borderWidth = 60, borderHeight = 20;
-int top = 0, left = 0;
-unsigned int score = 0, highScore = 0;
+int borderWidth = 60;
+int borderHeight = 20;
+unsigned int score = 0;
 enum class Direction { UP, DOWN, LEFT, RIGHT };
 Direction dir = Direction::RIGHT;
-bool run = true, paused = false, playerLost = false;
+bool run = true;
+bool playerLost = false;
 
 int snakeSpeed = 150;
-int speedLevel = 0;
 int foodCount = 1;
 int head = 0, tail = 0, snakeSize = 0;
 pair<int, int> snakeBuffer[MAX_SNAKE_LENGTH];
 vector<pair<int, int>> foodPositions;
-vector<char> foodSymbols = {'@', '*', '#', '$', '%'};
 WORD snakeColor = FOREGROUND_GREEN;
 WORD foodColor = FOREGROUND_RED;
 
 HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-steady_clock::time_point gameStart;
-steady_clock::time_point pauseStart;
-steady_clock::duration totalPausedTime = seconds(0);
+chrono::steady_clock::time_point gameStart;
+chrono::steady_clock::time_point pauseStart;
+chrono::steady_clock::duration totalPausedTime = chrono::seconds(0);
 
 struct pair_hash {
     size_t operator()(const pair<int, int> &p) const {
@@ -71,55 +68,46 @@ void setTextColor(WORD color) {
     SetConsoleTextAttribute(hConsole, color);
 }
 
-void DrawBorders() {
+void DrawBorders(int borderTop, int borderLeft) {
     for (int i = 0; i <= borderHeight; i++) {
-        moveCursorTo(top + i, left);
+        moveCursorTo(borderTop + i, borderLeft);
         cout << "|";
-        moveCursorTo(top + i, left + borderWidth);
+        moveCursorTo(borderTop + i, borderLeft + borderWidth);
         cout << "|";
     }
-    moveCursorTo(top - 1, left);
+    moveCursorTo(borderTop - 1, borderLeft);
     for (int i = 0; i <= borderWidth; i++) cout << "_";
-    moveCursorTo(top + borderHeight, left);
+    moveCursorTo(borderTop + borderHeight, borderLeft);
     for (int i = 0; i <= borderWidth; i++) cout << "_";
 }
 
-void drawSidebar() {
-    moveCursorTo(top, 2);
+void drawSidebar(int borderTop, int borderLeft) {
+    moveCursorTo(borderTop, 2);
     setTextColor(FOREGROUND_BLUE | FOREGROUND_INTENSITY);
     cout << "=== INFO ===";
 
-    moveCursorTo(top + 2, 2);
+    moveCursorTo(borderTop + 2, 2);
     setTextColor(FOREGROUND_WHITE);
     cout << "Score: " << score;
 
-    moveCursorTo(top + 3, 2);
-    cout << "High: " << highScore;
-
-    auto now = steady_clock::now();
-    auto playTime = duration_cast<seconds>(now - gameStart - totalPausedTime);
+    auto now = chrono::steady_clock::now();
+    auto playTime = chrono::duration_cast<chrono::seconds>(now - gameStart - totalPausedTime);
     int minutes = playTime.count() / 60;
     int seconds = playTime.count() % 60;
 
-    moveCursorTo(top + 5, 2);
+    moveCursorTo(borderTop + 4, 2);
     printf("Time: %02d:%02d", minutes, seconds);
-
-    if (paused) {
-        moveCursorTo(top + 7, 2);
-        setTextColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
-        cout << "Paused";
-    }
 
     setTextColor(FOREGROUND_WHITE);
 }
 
-void CreateFood() {
+void CreateFood(int borderTop, int borderLeft) {
     int toSpawn = foodCount - static_cast<int>(foodPositions.size());
     int attempts = 0, maxAttempts = 500;
 
     while (toSpawn > 0 && attempts++ < maxAttempts) {
-        int fx = left + 1 + rand() % (borderWidth - 2);
-        int fy = top + 1 + rand() % (borderHeight - 2);
+        int fx = borderLeft + 1 + rand() % (borderWidth - 2);
+        int fy = borderTop + 1 + rand() % (borderHeight - 2);
         pair<int, int> food = {fy, fx};
 
         if (snakeBody.count(food) == 0 &&
@@ -127,7 +115,7 @@ void CreateFood() {
             foodPositions.push_back(food);
             moveCursorTo(fy, fx);
             setTextColor(foodColor);
-            cout << foodSymbols[rand() % foodSymbols.size()];
+            cout << "@";
             setTextColor(FOREGROUND_WHITE);
             toSpawn--;
         }
@@ -157,32 +145,20 @@ Direction charToDirection(char ch) {
 void handleInput() {
     if (_kbhit()) {
         char ch = _getch();
-        if (ch == 'p') {
-            paused = !paused;
-            if (paused)
-                pauseStart = steady_clock::now();
-            else
-                totalPausedTime += steady_clock::now() - pauseStart;
-        }
         Direction newDir = charToDirection(ch);
-        if (!paused) {
-            switch (newDir) {
-                case Direction::UP: if (dir != Direction::DOWN) dir = Direction::UP; break;
-                case Direction::DOWN: if (dir != Direction::UP) dir = Direction::DOWN; break;
-                case Direction::LEFT: if (dir != Direction::RIGHT) dir = Direction::LEFT; break;
-                case Direction::RIGHT: if (dir != Direction::LEFT) dir = Direction::RIGHT; break;
-            }
+        switch (newDir) {
+            case Direction::UP: if (dir != Direction::DOWN) dir = Direction::UP; break;
+            case Direction::DOWN: if (dir != Direction::UP) dir = Direction::DOWN; break;
+            case Direction::LEFT: if (dir != Direction::RIGHT) dir = Direction::LEFT; break;
+            case Direction::RIGHT: if (dir != Direction::LEFT) dir = Direction::RIGHT; break;
         }
-        if (ch == 27 || ch == 'q') run = false;
+        if (ch == 27 || ch == 'q') {
+            run = false;
+        }
     }
 }
 
-void UpdateSnake() {
-    static int moveCounter = 0;
-    if (++moveCounter % 50 == 0 && snakeSpeed > 50) {
-        snakeSpeed -= 10;
-    }
-
+void UpdateSnake(int borderTop, int borderLeft) {
     int dx = 0, dy = 0;
     switch (dir) {
         case Direction::UP: dx = -1; break;
@@ -196,8 +172,8 @@ void UpdateSnake() {
     int newCol = currentHead.second + dy;
     pair<int, int> newHead = {newRow, newCol};
 
-    if (newRow < top || newRow >= top + borderHeight ||
-        newCol <= left || newCol >= left + borderWidth ||
+    if (newRow < borderTop || newRow >= borderTop + borderHeight ||
+        newCol <= borderLeft || newCol >= borderLeft + borderWidth ||
         snakeBody.count(newHead)) {
         playerLost = true;
         run = false;
@@ -221,7 +197,7 @@ void UpdateSnake() {
         cout << " ";
         pop_back();
     } else {
-        CreateFood();
+        CreateFood(borderTop, borderLeft);
     }
 
     DrawSnake();
@@ -238,12 +214,9 @@ bool gameOverScreen() {
 
     moveCursorTo(centerRow, centerCol);
     setTextColor(FOREGROUND_WHITE);
-    cout << "Score: " << score;
+    cout << "Your final score: " << score;
 
-    moveCursorTo(centerRow + 1, centerCol);
-    cout << "High Score: " << highScore;
-
-    moveCursorTo(centerRow + 3, centerCol);
+    moveCursorTo(centerRow + 2, centerCol);
     cout << "1. Restart  2. Exit";
     setTextColor(FOREGROUND_WHITE);
 
@@ -253,7 +226,6 @@ bool gameOverScreen() {
             if (ch == '1') {
                 run = true;
                 score = 0;
-                snakeSpeed = 150;
                 dir = Direction::RIGHT;
                 foodPositions.clear();
                 head = tail = snakeSize = 0;
@@ -268,14 +240,14 @@ bool gameOverScreen() {
     }
 }
 
-void initializeGame() {
+void initializeGame(int &borderTop, int &borderLeft) {
     clearScreen();
-    top = (rows - borderHeight) / 2;
-    left = (cols - borderWidth) / 2;
-    DrawBorders();
+    borderTop = (rows - borderHeight) / 2;
+    borderLeft = (cols - borderWidth) / 2;
+    DrawBorders(borderTop, borderLeft);
 
-    int midRow = top + borderHeight / 2;
-    int midCol = left + borderWidth / 2;
+    int midRow = borderTop + borderHeight / 2;
+    int midCol = borderLeft + borderWidth / 2;
     pair<int, int> start = {midRow, midCol};
     push_front(start);
 
@@ -285,35 +257,32 @@ void initializeGame() {
     setTextColor(FOREGROUND_WHITE);
 
     srand((unsigned int)time(0));
-    CreateFood();
+    CreateFood(borderTop, borderLeft);
 
-    gameStart = steady_clock::now();
-    totalPausedTime = seconds(0);
-    paused = false;
+    gameStart = chrono::steady_clock::now();
 }
 
-void gameLoop() {
+void gameLoop(int borderTop, int borderLeft) {
     while (run) {
         handleInput();
-        if (!paused) {
-            UpdateSnake();
-            drawSidebar();
-        }
+        UpdateSnake(borderTop, borderLeft);
+        drawSidebar(borderTop, borderLeft);
         Sleep(snakeSpeed);
     }
 }
 
 int main() {
-    while (true) {
-        initializeGame();
-        gameLoop();
+    int borderTop, borderLeft;
 
-        if (score > highScore) highScore = score;
+    while (true) {
+        initializeGame(borderTop, borderLeft);
+        gameLoop(borderTop, borderLeft);
 
         if (playerLost) {
             if (!gameOverScreen()) break;
-            playerLost = false;
-        } else break;
+        } else {
+            break;
+        }
     }
 
     return 0;
