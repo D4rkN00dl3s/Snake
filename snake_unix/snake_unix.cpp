@@ -2,6 +2,7 @@
 #include <vector>
 #include <unordered_set>
 #include <ctime>
+#include <chrono>
 #include <unistd.h>
 #include <termios.h>
 #include <fcntl.h>
@@ -10,6 +11,7 @@
 
 using namespace std;
 
+// Global Variables
 const int MAX_SNAKE_LENGTH = 1000;
 int rows = 0, cols = 0;
 int borderWidth = 60;
@@ -25,11 +27,17 @@ enum class Direction
 Direction dir = Direction::RIGHT;
 bool run = true;
 
+// Settings Variables
 int snakeSpeed = 150000;
 string snakeColor = "\033[32m";
 string foodColor = "\033[31m";
 int foodCount = 1;
 vector<pair<int, int>> foodPositions;
+
+// Clock For Timer
+chrono::steady_clock::time_point gameStart;
+chrono::steady_clock::time_point pauseStart;
+chrono::steady_clock::duration totalPausedTime = chrono::seconds(0);
 
 pair<int, int> snakeBuffer[MAX_SNAKE_LENGTH];
 int head = 0, tail = 0, snakeSize = 0;
@@ -129,6 +137,30 @@ void DrawBorders(int top, int left)
         moveCursorTo(top + i, left + borderWidth);
         cout << "|";
     }
+    cout.flush();
+}
+
+void drawSidebar(int top, int left)
+{
+    for (int i = 0; i < 6; ++i) {
+        moveCursorTo(top + i, 2);
+        cout << "                      "; // Clear line
+    }
+
+    moveCursorTo(top, 2);
+    cout << "\033[36m=== INFO ===\033[0m";
+
+    moveCursorTo(top + 2, 2);
+    cout << "Score: " << score;
+
+    auto now = chrono::steady_clock::now();
+    auto playTime = chrono::duration_cast<chrono::seconds>(now - gameStart - totalPausedTime);
+    int minutes = playTime.count() / 60;
+    int seconds = playTime.count() % 60;
+
+    moveCursorTo(top + 4, 2);
+    printf("Time: %02d:%02d", minutes, seconds);
+
     cout.flush();
 }
 
@@ -352,6 +384,8 @@ void settingsMenu()
 
 void pauseMenu()
 {
+    pauseStart = chrono::steady_clock::now();
+
     clearTerminal();
     moveCursorTo(rows / 2 - 1, cols / 2 - 10);
     cout << "=== GAME PAUSED ===";
@@ -368,6 +402,7 @@ void pauseMenu()
         char ch = getInput();
         if (ch == '1')
         {
+            totalPausedTime += chrono::steady_clock::now() - pauseStart;
             clearTerminal();
             DrawBorders((rows - borderHeight) / 2, (cols - borderWidth) / 2);
             DrawSnake();
@@ -513,6 +548,8 @@ void initializeGame(int &top, int &left)
 
     srand(static_cast<unsigned int>(time(0)));
     CreateFood(top, left);
+
+    gameStart = chrono::steady_clock::now();
 }
 
 void gameLoop(int top, int left)
@@ -522,7 +559,9 @@ void gameLoop(int top, int left)
         char ch = getInput();
         if (ch)
             handleInput(ch);
+
         UpdateSnake(top, left);
+        drawSidebar(top, left);
         usleep(snakeSpeed);
     }
 }
