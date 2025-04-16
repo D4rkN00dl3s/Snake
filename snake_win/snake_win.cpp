@@ -7,6 +7,8 @@
 #include <ctime>
 #include <algorithm>
 
+#define FOREGROUND_WHITE (FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE)
+
 using namespace std;
 
 const int MAX_SNAKE_LENGTH = 1000;
