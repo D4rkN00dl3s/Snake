@@ -137,7 +137,7 @@ void drawSidebar(int borderTop, int borderLeft)
     setTextColor(FOREGROUND_INTENSITY | FOREGROUND_BLUE);
     cout << "=== INFO ===";
 
-    moveCursorTo(top + 2, 2);
+    moveCursorTo(borderTop + 2, 2);
     setTextColor(FOREGROUND_WHITE);
     cout << "Score: " << score;
 
