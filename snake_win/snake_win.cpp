@@ -283,9 +283,21 @@ bool gameOverScreen()
     int centerRow = rows / 2;
     int centerCol = cols / 2 - 10;
 
-    moveCursorTo(centerRow - 1, centerCol);
+    for (int i = 0; i < 6; ++i)
+    {
+        moveCursorTo(centerRow, centerCol);
+        if (i % 2 == 0)
+            setTextColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
+        cout << "=== GAME OVER ===";       // Bright red, blinking
+        else cout << "                  "; // Clear text
+
+        cout.flush();
+        Sleep(300); // 300ms
+    }
+
+    moveCursorTo(centerRow - 2, centerCol);
     setTextColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
-    cout << "=== GAME OVER ===";
+    cout << "=== GAME OVER ==="; // Bright red, blinking
 
     moveCursorTo(centerRow, centerCol);
     setTextColor(FOREGROUND_WHITE);
@@ -304,6 +316,17 @@ bool gameOverScreen()
         char ch = _getch();
         if (ch == '1')
         {
+            // Countdown animation
+            for (int i = 3; i >= 1; --i)
+            {
+                moveCursorTo(centerRow + 5, centerCol);
+                setTextColor(FOREGROUND_YELLOW);
+                cout << "Restarting in " << i << "...";
+                setTextColor(FOREGROUND_WHITE);
+                cout.flush();
+                Sleep(1000); // 1 second
+            }
+
             run = true;
             score = 0;
             dir = Direction::RIGHT;
