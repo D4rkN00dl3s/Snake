@@ -110,29 +110,24 @@ void resizeConsoleWindow(int width, int height)
 
 void DrawBorders(int borderTop, int borderLeft)
 {
+    string border(static_cast<size_t>(borderWidth), '_');
+    moveCursorTo(borderTop - 1, left);
+    cout << border;
+    moveCursorTo(borderTop + borderHeight, left);
+    cout << border;
+
     for (int i = 0; i <= borderHeight; i++)
     {
-        moveCursorTo(borderTop + i, borderLeft);
+        moveCursorTo(borderTop + i, left);
         cout << "|";
-        moveCursorTo(borderTop + i, borderLeft + borderWidth);
+        moveCursorTo(borderTop + i, left + borderWidth);
         cout << "|";
     }
-    moveCursorTo(borderTop - 1, borderLeft);
-    for (int i = 0; i <= borderWidth; i++)
-        cout << "_";
-    moveCursorTo(borderTop + borderHeight, borderLeft);
-    for (int i = 0; i <= borderWidth; i++)
-        cout << "_";
+    cout.flush();
 }
 
 void drawSidebar(int borderTop, int borderLeft)
 {
-    for (int i = 0; i < 6; ++i)
-    {
-        moveCursorTo(borderTop + i, 2);
-        cout << "                      "; // Clear line
-    }
-
     moveCursorTo(borderTop, 2);
     setTextColor(FOREGROUND_INTENSITY | FOREGROUND_BLUE);
     cout << "=== INFO ===";
@@ -329,29 +324,33 @@ void changeSnakeSpeed()
         if (_kbhit())
         {
             ch = _getch();
+
+            switch (ch)
+            {
+            case '1':
+                snakeSpeed = 500000;
+                correctInput = true;
+                break;
+            case '2':
+                snakeSpeed = 250000;
+                correctInput = true;
+                break;
+            case '3':
+                snakeSpeed = 100000;
+                correctInput = true;
+                break;
+            case '4':
+                snakeSpeed = 50000;
+                correctInput = true;
+                break;
+            default:
+                break;
+            }
         }
-        switch (ch)
+        if (!correctInput)
         {
-        case '1':
-            snakeSpeed = 500000;
-            correctInput = true;
-            break;
-        case '2':
-            snakeSpeed = 250000;
-            correctInput = true;
-            break;
-        case '3':
-            snakeSpeed = 100000;
-            correctInput = true;
-            break;
-        case '4':
-            snakeSpeed = 50000;
-            correctInput = true;
-            break;
-        default:
             setTextColor(FOREGROUND_WHITE);
             cout << "Wrong Input! Try again!";
-            break;
         }
     }
     moveCursorTo(rows / 2 + 1, cols / 2 - 10);
