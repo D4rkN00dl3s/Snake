@@ -15,7 +15,7 @@
 using namespace std;
 
 const int MAX_SNAKE_LENGTH = 1000;
-int rows = 25, cols = 80;
+int rows = 0, cols = 0;
 int borderWidth = 60;
 int borderHeight = 20;
 unsigned int score = 0;
@@ -29,6 +29,9 @@ enum class Direction
 Direction dir = Direction::RIGHT;
 bool run = true;
 bool playerLost = false;
+
+int screenSwapDelayShort = 50;
+int screenSwapDelayLong = 1000;
 
 int snakeSpeed = 150;
 int foodCount = 1;
@@ -91,6 +94,16 @@ void hideCursor()
     GetConsoleCursorInfo(hConsole, &cursorInfo);
     cursorInfo.bVisible = FALSE; // hide
     SetConsoleCursorInfo(hConsole, &cursorInfo);
+}
+
+void getTerminalSize(int &rows, int &cols)
+{
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi))
+    {
+        cols = csbi.srWindow.Right - csbi.srWindow.Left + 1;
+        rows = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
+    }
 }
 
 void setTextColor(WORD color)
@@ -304,7 +317,7 @@ bool gameOverScreen()
         {
             return false;
         }
-        Sleep(50);
+        Sleep(screenSwapDelayShort));
     }
 }
 
@@ -316,11 +329,10 @@ void changeSnakeSpeed()
     cout << "Choose your speed level (1-4, 1 = slowest, 4 = fastest)): ";
     cout.flush();
     bool correctInput = false;
-    char ch;
 
     while (correctInput == false)
     {
-        ch = _getch();
+        char ch = _getch();
 
         switch (ch)
         {
@@ -354,7 +366,7 @@ void changeSnakeSpeed()
     setTextColor(FOREGROUND_WHITE);
     cout << "Speed updated to " << snakeSpeed << " ms!";
     cout.flush();
-    Sleep(50);
+    Sleep(screenSwapDelayLong);
     clearScreen();
 }
 
@@ -422,7 +434,7 @@ void settingsMenu()
             setTextColor(FOREGROUND_WHITE);
             cout << "Color changed!";
             cout.flush();
-            Sleep(50);
+            Sleep(screenSwapDelayLong);
             clearScreen();
         }
         else if (ch == '3')
@@ -450,7 +462,7 @@ void settingsMenu()
             setTextColor(FOREGROUND_WHITE);
             cout << "Color changed!";
             cout.flush();
-            Sleep(50);
+            Sleep(screenSwapDelayLong);
             clearScreen();
         }
         else if (ch == '4')
@@ -472,12 +484,12 @@ void settingsMenu()
             setTextColor(FOREGROUND_WHITE);
             cout << "Food count updated!";
             cout.flush();
-            Sleep(50);
+            Sleep(screenSwapDelayLong);
             clearScreen();
         }
         else if (ch == '5')
             break;
-        Sleep(200);
+        Sleep(screenSwapDelayShort);
     }
 }
 
@@ -532,7 +544,7 @@ void pauseMenu()
             playerLost = false;
             break;
         }
-        Sleep(10);
+        Sleep(screenSwapDelayShort);
     }
 }
 
@@ -577,6 +589,8 @@ void initializeGame(int &borderTop, int &borderLeft)
 {
     hideCursor();
     clearScreen();
+
+    getTerminalSize(rows, cols);
     borderTop = (rows - borderHeight) / 2;
     borderLeft = (cols - borderWidth) / 2;
     DrawBorders(borderTop, borderLeft);
@@ -610,12 +624,12 @@ void gameLoop(int borderTop, int borderLeft)
 
 int main()
 {
-    int borderTop, borderLeft;
 
     resizeConsoleWindow(800, 600);
 
     while (true)
     {
+        int borderTop, borderLeft;
         initializeGame(borderTop, borderLeft);
         gameLoop(borderTop, borderLeft);
 

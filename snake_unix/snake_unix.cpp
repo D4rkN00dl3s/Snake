@@ -181,12 +181,6 @@ void DrawBorders(int top, int left)
 
 void drawSidebar(int top, int left)
 {
-    for (int i = 0; i < 6; ++i)
-    {
-        moveCursorTo(top + i, 2);
-        cout << "                      "; // Clear line
-    }
-
     moveCursorTo(top, 2);
     cout << "\033[36m=== INFO ===\033[0m";
 
