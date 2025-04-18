@@ -289,13 +289,13 @@ bool gameOverScreen()
         if (i % 2 == 0)
         {
             setTextColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
-            cout << "=== GAME OVER ==="; // Bright red, blinking
+            cout << "=== GAME OVER ===";
         }
         else
-            cout << "                  "; // Clear text
+            cout << "                  ";
 
         cout.flush();
-        Sleep(300); // 300ms
+        Sleep(300);
     }
 
     moveCursorTo(centerRow - 2, centerCol);
@@ -327,7 +327,7 @@ bool gameOverScreen()
                 cout << "Restarting in " << i << "...";
                 setTextColor(FOREGROUND_WHITE);
                 cout.flush();
-                Sleep(1000); // 1 second
+                Sleep(1000);
             }
 
             run = true;

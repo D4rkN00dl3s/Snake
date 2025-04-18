@@ -209,12 +209,12 @@ bool gameOverScreen()
     {
         moveCursorTo(centerRow, centerCol);
         if (i % 2 == 0)
-            cout << "\033[5;31m=== GAME OVER ===\033[0m"; // Bright red, blinking
+            cout << "\033[5;31m=== GAME OVER ===\033[0m";
         else
-            cout << "                  "; // Clear text
+            cout << "                  ";
 
         cout.flush();
-        usleep(300000); // 300ms
+        usleep(300000);
     }
 
     moveCursorTo(centerRow - 2, centerCol);
@@ -242,7 +242,7 @@ bool gameOverScreen()
                 moveCursorTo(centerRow + 5, centerCol);
                 cout << "\033[33mRestarting in " << i << "...\033[0m ";
                 cout.flush();
-                usleep(1000000); // 1 second
+                usleep(1000000);
             }
 
             run = true;
