@@ -337,19 +337,19 @@ void changeSnakeSpeed()
         switch (ch)
         {
         case '1':
-            snakeSpeed = 500000;
+            snakeSpeed = 500;
             correctInput = true;
             break;
         case '2':
-            snakeSpeed = 250000;
+            snakeSpeed = 250;
             correctInput = true;
             break;
         case '3':
-            snakeSpeed = 100000;
+            snakeSpeed = 100;
             correctInput = true;
             break;
         case '4':
-            snakeSpeed = 50000;
+            snakeSpeed = 50;
             correctInput = true;
             break;
         default:
@@ -362,6 +362,7 @@ void changeSnakeSpeed()
             cout << "Wrong Input! Try again!";
         }
     }
+
     moveCursorTo(rows / 2 + 1, cols / 2 - 10);
     setTextColor(FOREGROUND_WHITE);
     cout << "Speed updated to " << snakeSpeed << " ms!";
