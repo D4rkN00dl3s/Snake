@@ -423,7 +423,7 @@ void settingsMenu()
         moveCursorTo(rows / 2 - 2, cols / 2 - 10);
         cout << "=== SETTINGS ===";
         moveCursorTo(rows / 2 - 1, cols / 2 - 10);
-        cout << "1. Snake Speed (current: " << snakeSpeed / 1000 << "ms)";
+        cout << "1. Snake Speed";
         moveCursorTo(rows / 2, cols / 2 - 10);
         cout << "2. Snake Color";
         moveCursorTo(rows / 2 + 1, cols / 2 - 10);
