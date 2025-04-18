@@ -127,11 +127,17 @@ void DrawBorders(int borderTop, int borderLeft)
 
 void drawSidebar(int borderTop, int borderLeft)
 {
-    moveCursorTo(borderTop, 2);
-    setTextColor(FOREGROUND_BLUE | FOREGROUND_INTENSITY);
+    for (int i = 0; i < 6; ++i)
+    {
+        moveCursorTo(top + i, 2);
+        cout << "                      "; // Clear line
+    }
+
+    moveCursorTo(top, 2);
+    setTextColor(FOREGROUND_INTENSITY | FOREGROUND_BLUE);
     cout << "=== INFO ===";
 
-    moveCursorTo(borderTop + 2, 2);
+    moveCursorTo(top + 2, 2);
     setTextColor(FOREGROUND_WHITE);
     cout << "Score: " << score;
 
@@ -140,10 +146,11 @@ void drawSidebar(int borderTop, int borderLeft)
     int minutes = playTime.count() / 60;
     int seconds = playTime.count() % 60;
 
-    moveCursorTo(borderTop + 4, 2);
+    moveCursorTo(top + 4, 2);
+    setTextColor(FOREGROUND_WHITE);
     printf("Time: %02d:%02d", minutes, seconds);
 
-    setTextColor(FOREGROUND_WHITE);
+    cout.flush();
 }
 
 void CreateFood(int borderTop, int borderLeft)
@@ -318,39 +325,35 @@ void changeSnakeSpeed()
 
     while (correctInput == false)
     {
-        while (true)
+        char ch;
+        if (_kbhit())
         {
-            if (_kbhit())
-            {
-                char ch = _getch();
-                switch (ch)
-                {
-                case '1':
-                    snakeSpeed = 500000;
-                    correctInput = true;
-                    break;
-                case '2':
-                    snakeSpeed = 250000;
-                    correctInput = true;
-                    break;
-                case '3':
-                    snakeSpeed = 100000;
-                    correctInput = true;
-                    break;
-                case '4':
-                    snakeSpeed = 50000;
-                    correctInput = true;
-                    break;
-                default:
-                    setTextColor(FOREGROUND_WHITE);
-                    cout << "Wrong Input! Try again!";
-                    break;
-                }
-            }
+            ch = _getch();
         }
-        Sleep(10);
+        switch (ch)
+        {
+        case '1':
+            snakeSpeed = 500000;
+            correctInput = true;
+            break;
+        case '2':
+            snakeSpeed = 250000;
+            correctInput = true;
+            break;
+        case '3':
+            snakeSpeed = 100000;
+            correctInput = true;
+            break;
+        case '4':
+            snakeSpeed = 50000;
+            correctInput = true;
+            break;
+        default:
+            setTextColor(FOREGROUND_WHITE);
+            cout << "Wrong Input! Try again!";
+            break;
+        }
     }
-
     moveCursorTo(rows / 2 + 1, cols / 2 - 10);
     setTextColor(FOREGROUND_WHITE);
     cout << "Speed updated to " << snakeSpeed << " ms!";
@@ -513,7 +516,8 @@ void pauseMenu()
     while (true)
     {
         char ch;
-        if(_kbhit()){
+        if (_kbhit())
+        {
             ch = _getch();
         }
         if (ch == '1' || ch == 27)
