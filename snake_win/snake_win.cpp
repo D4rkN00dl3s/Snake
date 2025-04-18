@@ -199,43 +199,6 @@ Direction charToDirection(char ch)
     }
 }
 
-void handleInput()
-{
-    if (_kbhit())
-    {
-        char ch = _getch();
-        if (ch == 27)
-        {
-            pauseMenu();
-            return;
-        }
-        if (ch == 'q')
-        {
-            run = false;
-        }
-        Direction newDir = charToDirection(ch);
-        switch (newDir)
-        {
-        case Direction::UP:
-            if (dir != Direction::DOWN)
-                dir = Direction::UP;
-            break;
-        case Direction::DOWN:
-            if (dir != Direction::UP)
-                dir = Direction::DOWN;
-            break;
-        case Direction::LEFT:
-            if (dir != Direction::RIGHT)
-                dir = Direction::LEFT;
-            break;
-        case Direction::RIGHT:
-            if (dir != Direction::LEFT)
-                dir = Direction::RIGHT;
-            break;
-        }
-    }
-}
-
 void UpdateSnake(int borderTop, int borderLeft)
 {
     int dx = 0, dy = 0;
@@ -556,7 +519,7 @@ void pauseMenu()
         if (ch == '1' || ch == 27)
         {
             totalPausedTime += chrono::steady_clock::now() - pauseStart;
-            clearTerminal();
+            clearScreen();
             DrawBorders((rows - borderHeight) / 2, (cols - borderWidth) / 2);
             DrawSnake();
             for (const auto &food : foodPositions)
@@ -581,6 +544,43 @@ void pauseMenu()
             break;
         }
         Sleep(10);
+    }
+}
+
+void handleInput()
+{
+    if (_kbhit())
+    {
+        char ch = _getch();
+        if (ch == 27)
+        {
+            pauseMenu();
+            return;
+        }
+        if (ch == 'q')
+        {
+            run = false;
+        }
+        Direction newDir = charToDirection(ch);
+        switch (newDir)
+        {
+        case Direction::UP:
+            if (dir != Direction::DOWN)
+                dir = Direction::UP;
+            break;
+        case Direction::DOWN:
+            if (dir != Direction::UP)
+                dir = Direction::DOWN;
+            break;
+        case Direction::LEFT:
+            if (dir != Direction::RIGHT)
+                dir = Direction::LEFT;
+            break;
+        case Direction::RIGHT:
+            if (dir != Direction::LEFT)
+                dir = Direction::RIGHT;
+            break;
+        }
     }
 }
 
