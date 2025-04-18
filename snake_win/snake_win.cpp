@@ -389,110 +389,95 @@ void settingsMenu()
         cout << "5. Back to Pause Menu";
         cout.flush();
 
-        while (true)
+        char ch = _getch();
+
+        if (ch == 27) // ESC key
+            return;
+
+        if (ch == '1')
         {
-            if (_kbhit())
-            {
-                char ch = _getch();
-
-                if (ch == 27) // ESC key
-                    return;
-
-                if (ch == '1')
-                {
-                    changeSnakeSpeed();
-                }
-                else if (ch == '2')
-                {
-                    clearScreen();
-                    char c = '\0';
-                    do
-                    {
-                        moveCursorTo(rows / 2, cols / 2 - 20);
-                        setTextColor(FOREGROUND_WHITE);
-                        cout << "Choose Snake Color: 1=Green 2=Yellow 3=Cyan: ";
-                        cout.flush();
-                        if (_kbhit())
-                        {
-                            c = _getch();
-                        }
-                        Sleep(10);
-                    } while (c != '1' && c != '2' && c != '3');
-
-                    if (c == '1')
-                        snakeColor = FOREGROUND_GREEN;
-                    else if (c == '2')
-                        snakeColor = FOREGROUND_YELLOW;
-                    else if (c == '3')
-                        snakeColor = FOREGROUND_CYAN;
-                    moveCursorTo(rows / 2 + 1, cols / 2 - 10);
-                    setTextColor(FOREGROUND_WHITE);
-                    cout << "Color changed!";
-                    cout.flush();
-                    Sleep(50);
-                    clearScreen();
-                }
-                else if (ch == '3')
-                {
-                    clearScreen();
-                    char c = '\0';
-                    do
-                    {
-                        moveCursorTo(rows / 2, cols / 2 - 20);
-                        setTextColor(FOREGROUND_WHITE);
-                        cout << "Choose Food Color: 1=Red 2=Magenta 3=Blue: ";
-                        cout.flush();
-                        if (_kbhit())
-                        {
-                            c = _getch();
-                        }
-                        Sleep(10);
-                    } while (c != '1' && c != '2' && c != '3');
-
-                    if (c == '1')
-                        foodColor = FOREGROUND_RED;
-                    else if (c == '2')
-                        foodColor = FOREGROUND_MAGENTA;
-                    else if (c == '3')
-                        foodColor = FOREGROUND_BLUE;
-
-                    moveCursorTo(rows / 2 + 1, cols / 2 - 10);
-                    setTextColor(FOREGROUND_WHITE);
-                    cout << "Color changed!";
-                    cout.flush();
-                    Sleep(50);
-                    clearScreen();
-                }
-                else if (ch == '4')
-                {
-                    clearScreen();
-                    char c = '\0';
-                    do
-                    {
-                        moveCursorTo(rows / 2, cols / 2 - 20);
-                        setTextColor(FOREGROUND_WHITE);
-                        cout << "Enter food amount (1-3): ";
-                        cout.flush();
-                        if (_kbhit())
-                        {
-                            c = _getch();
-                        }
-                        Sleep(10);
-                    } while (c != '1' && c != '2' && c != '3');
-                    foodCount = c - '0';
-
-                    moveCursorTo(rows / 2 + 1, cols / 2 - 10);
-                    setTextColor(FOREGROUND_WHITE);
-                    cout << "Food count updated!";
-                    cout.flush();
-                    Sleep(50);
-                    clearScreen();
-                }
-                else if (ch == '5')
-                    break;
-                Sleep(200);
-            }
+            changeSnakeSpeed();
         }
+        else if (ch == '2')
+        {
+            clearScreen();
+            char c = '\0';
+            do
+            {
+                moveCursorTo(rows / 2, cols / 2 - 20);
+                setTextColor(FOREGROUND_WHITE);
+                cout << "Choose Snake Color: 1=Green 2=Yellow 3=Cyan: ";
+                cout.flush();
+                c = _getch();
+                Sleep(10);
+            } while (c != '1' && c != '2' && c != '3');
+
+            if (c == '1')
+                snakeColor = FOREGROUND_GREEN;
+            else if (c == '2')
+                snakeColor = FOREGROUND_YELLOW;
+            else if (c == '3')
+                snakeColor = FOREGROUND_CYAN;
+            moveCursorTo(rows / 2 + 1, cols / 2 - 10);
+            setTextColor(FOREGROUND_WHITE);
+            cout << "Color changed!";
+            cout.flush();
+            Sleep(50);
+            clearScreen();
+        }
+        else if (ch == '3')
+        {
+            clearScreen();
+            char c = '\0';
+            do
+            {
+                moveCursorTo(rows / 2, cols / 2 - 20);
+                setTextColor(FOREGROUND_WHITE);
+                cout << "Choose Food Color: 1=Red 2=Magenta 3=Blue: ";
+                cout.flush();
+                c = _getch();
+                Sleep(10);
+            } while (c != '1' && c != '2' && c != '3');
+
+            if (c == '1')
+                foodColor = FOREGROUND_RED;
+            else if (c == '2')
+                foodColor = FOREGROUND_MAGENTA;
+            else if (c == '3')
+                foodColor = FOREGROUND_BLUE;
+
+            moveCursorTo(rows / 2 + 1, cols / 2 - 10);
+            setTextColor(FOREGROUND_WHITE);
+            cout << "Color changed!";
+            cout.flush();
+            Sleep(50);
+            clearScreen();
+        }
+        else if (ch == '4')
+        {
+            clearScreen();
+            char c = '\0';
+            do
+            {
+                moveCursorTo(rows / 2, cols / 2 - 20);
+                setTextColor(FOREGROUND_WHITE);
+                cout << "Enter food amount (1-3): ";
+                cout.flush();
+                c = _getch();
+                Sleep(10);
+            } while (c != '1' && c != '2' && c != '3');
+            foodCount = c - '0';
+
+            moveCursorTo(rows / 2 + 1, cols / 2 - 10);
+            setTextColor(FOREGROUND_WHITE);
+            cout << "Food count updated!";
+            cout.flush();
+            Sleep(50);
+            clearScreen();
+        }
+        else if (ch == '5')
+            break;
+        Sleep(200);
     }
 }
 
@@ -518,10 +503,8 @@ void pauseMenu()
     while (true)
     {
         char ch;
-        if (_kbhit())
-        {
-            ch = _getch();
-        }
+        ch = _getch();
+
         if (ch == '1' || ch == 27)
         {
             totalPausedTime += chrono::steady_clock::now() - pauseStart;
