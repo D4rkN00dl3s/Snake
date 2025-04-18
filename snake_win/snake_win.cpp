@@ -317,7 +317,7 @@ bool gameOverScreen()
         {
             return false;
         }
-        Sleep(screenSwapDelayShort));
+        Sleep(screenSwapDelayShort);
     }
 }
 
