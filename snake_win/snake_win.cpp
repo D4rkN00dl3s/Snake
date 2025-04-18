@@ -327,7 +327,7 @@ bool gameOverScreen()
 
 void changeSnakeSpeed()
 {
-    clearTerminal();
+    clearScreen();
     moveCursorTo(rows / 2, cols / 2 - 20);
     setTextColor(FOREGROUND_WHITE);
     cout << "Choose your speed level (1-4, 1 = slowest, 4 = fastest)): ";
@@ -374,14 +374,14 @@ void changeSnakeSpeed()
     cout << "Speed updated to " << snakeSpeed << " ms!";
     cout.flush();
     Sleep(50);
-    clearTerminal();
+    clearScreen();
 }
 
 void settingsMenu()
 {
     while (true)
     {
-        clearTerminal();
+        clearScreen();
         moveCursorTo(rows / 2 - 2, cols / 2 - 10);
         setTextColor(FOREGROUND_WHITE);
         cout << "=== SETTINGS ===";
@@ -417,7 +417,7 @@ void settingsMenu()
                 }
                 else if (ch == '2')
                 {
-                    clearTerminal();
+                    clearScreen();
                     char c = '\0';
                     do
                     {
@@ -443,11 +443,11 @@ void settingsMenu()
                     cout << "Color changed!";
                     cout.flush();
                     Sleep(50);
-                    clearTerminal();
+                    clearScreen();
                 }
                 else if (ch == '3')
                 {
-                    clearTerminal();
+                    clearScreen();
                     char c = '\0';
                     do
                     {
@@ -474,11 +474,11 @@ void settingsMenu()
                     cout << "Color changed!";
                     cout.flush();
                     Sleep(50);
-                    clearTerminal();
+                    clearScreen();
                 }
                 else if (ch == '4')
                 {
-                    clearTerminal();
+                    clearScreen();
                     char c = '\0';
                     do
                     {
@@ -499,7 +499,7 @@ void settingsMenu()
                     cout << "Food count updated!";
                     cout.flush();
                     Sleep(50);
-                    clearTerminal();
+                    clearScreen();
                 }
                 else if (ch == '5')
                     break;
