@@ -61,12 +61,14 @@ void push_front(pair<int, int> pos)
     snakeSize++;
     snakeBody.insert(pos);
 }
+
 void pop_back()
 {
     tail = mod(tail - 1);
     snakeBody.erase(snakeBuffer[tail]);
     snakeSize--;
 }
+
 pair<int, int> get_front() { return snakeBuffer[head]; }
 pair<int, int> get_back() { return snakeBuffer[mod(tail - 1)]; }
 
@@ -75,10 +77,22 @@ void moveCursorTo(int row, int col)
     COORD coord = {(SHORT)col, (SHORT)row};
     SetConsoleCursorPosition(hConsole, coord);
 }
+
 void clearScreen()
 {
     system("cls");
 }
+
+void hideCursor()
+{
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_CURSOR_INFO cursorInfo;
+
+    GetConsoleCursorInfo(hConsole, &cursorInfo);
+    cursorInfo.bVisible = FALSE; // hide
+    SetConsoleCursorInfo(hConsole, &cursorInfo);
+}
+
 void setTextColor(WORD color)
 {
     SetConsoleTextAttribute(hConsole, color);
@@ -190,6 +204,15 @@ void handleInput()
     if (_kbhit())
     {
         char ch = _getch();
+        if (ch == 27)
+        {
+            pauseMenu();
+            return;
+        }
+        if (ch == 'q')
+        {
+            run = false;
+        }
         Direction newDir = charToDirection(ch);
         switch (newDir)
         {
@@ -209,10 +232,6 @@ void handleInput()
             if (dir != Direction::LEFT)
                 dir = Direction::RIGHT;
             break;
-        }
-        if (ch == 27 || ch == 'q')
-        {
-            run = false;
         }
     }
 }
@@ -408,7 +427,7 @@ void settingsMenu()
             {
                 char ch = _getch();
 
-                if (ch == '\033') // ESC key
+                if (ch == 27) // ESC key
                     return;
 
                 if (ch == '1')
@@ -509,8 +528,65 @@ void settingsMenu()
     }
 }
 
+void pauseMenu()
+{
+    pauseStart = chrono::steady_clock::now();
+
+    clearScreen();
+    moveCursorTo(rows / 2 - 1, cols / 2 - 10);
+    setTextColor(FOREGROUND_WHITE);
+    cout << "=== GAME PAUSED ===";
+    moveCursorTo(rows / 2, cols / 2 - 10);
+    setTextColor(FOREGROUND_WHITE);
+    cout << "1. Continue";
+    moveCursorTo(rows / 2 + 1, cols / 2 - 10);
+    setTextColor(FOREGROUND_WHITE);
+    cout << "2. Settings";
+    moveCursorTo(rows / 2 + 2, cols / 2 - 10);
+    setTextColor(FOREGROUND_WHITE);
+    cout << "3. Exit";
+    cout.flush();
+
+    while (true)
+    {
+        char ch;
+        if(_kbhit()){
+            ch = _getch();
+        }
+        if (ch == '1' || ch == 27)
+        {
+            totalPausedTime += chrono::steady_clock::now() - pauseStart;
+            clearTerminal();
+            DrawBorders((rows - borderHeight) / 2, (cols - borderWidth) / 2);
+            DrawSnake();
+            for (const auto &food : foodPositions)
+            {
+                moveCursorTo(food.first, food.second);
+                setTextColor(foodColor);
+                cout << "@";
+                setTextColor(FOREGROUND_WHITE);
+            }
+            cout.flush();
+            break;
+        }
+        else if (ch == '2')
+        {
+            settingsMenu();
+            return pauseMenu();
+        }
+        else if (ch == '3')
+        {
+            run = false;
+            playerLost = false;
+            break;
+        }
+        Sleep(10);
+    }
+}
+
 void initializeGame(int &borderTop, int &borderLeft)
 {
+    hideCursor();
     clearScreen();
     borderTop = (rows - borderHeight) / 2;
     borderLeft = (cols - borderWidth) / 2;
