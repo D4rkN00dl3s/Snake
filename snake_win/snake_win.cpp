@@ -111,16 +111,16 @@ void resizeConsoleWindow(int width, int height)
 void DrawBorders(int borderTop, int borderLeft)
 {
     string border(static_cast<size_t>(borderWidth), '_');
-    moveCursorTo(borderTop - 1, left);
+    moveCursorTo(borderTop - 1, borderLeft);
     cout << border;
-    moveCursorTo(borderTop + borderHeight, left);
+    moveCursorTo(borderTop + borderHeight, borderLeft);
     cout << border;
 
     for (int i = 0; i <= borderHeight; i++)
     {
-        moveCursorTo(borderTop + i, left);
+        moveCursorTo(borderTop + i, borderLeft);
         cout << "|";
-        moveCursorTo(borderTop + i, left + borderWidth);
+        moveCursorTo(borderTop + i, borderLeft + borderWidth);
         cout << "|";
     }
     cout.flush();
