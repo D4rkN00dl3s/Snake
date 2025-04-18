@@ -80,7 +80,8 @@ void hideCursor()
     fflush(stdout);
 }
 
-void resizeTerminal(int cols, int rows) {
+void resizeTerminal(int cols, int rows)
+{
     struct winsize w;
     w.ws_col = cols;
     w.ws_row = rows;
@@ -180,7 +181,8 @@ void DrawBorders(int top, int left)
 
 void drawSidebar(int top, int left)
 {
-    for (int i = 0; i < 6; ++i) {
+    for (int i = 0; i < 6; ++i)
+    {
         moveCursorTo(top + i, 2);
         cout << "                      "; // Clear line
     }
@@ -265,7 +267,6 @@ bool gameOverScreen()
         usleep(10000);
     }
 }
-
 
 void CreateFood(int top, int left)
 {
@@ -371,6 +372,49 @@ int getRawNumberInput(int min, int max)
     }
 }
 
+void changeSnakeSpeed()
+{
+    clearTerminal();
+    moveCursorTo(rows / 2, cols / 2 - 20);
+    cout << "Choose your speed level (1-4, 1 = slowest, 4 = fastest)): ";
+    cout.flush();
+    bool correctInput = false;
+
+    while (correctInput == false)
+    {
+        int value = getRawNumberInput(1, 4);
+        usleep(10000);
+        switch (value)
+        {
+        case 1:
+            snakeSpeed = 500000;
+            correctInput = true;
+            break;
+        case 2:
+            snakeSpeed = 250000;
+            correctInput = true;
+            break;
+        case 3:
+            snakeSpeed = 100000;
+            correctInput = true;
+            break;
+        case 4:
+            snakeSpeed = 50000;
+            correctInput = true;
+            break;
+        default:
+            cout << "Wrong Input! Try again!";
+            break;
+        }
+    }
+
+    moveCursorTo(rows / 2 + 1, cols / 2 - 10);
+    cout << "Speed updated to " << snakeSpeed << " ms!";
+    cout.flush();
+    usleep(500000);
+    clearTerminal();
+}
+
 void settingsMenu()
 {
     while (true)
@@ -397,19 +441,7 @@ void settingsMenu()
 
         if (ch == '1')
         {
-            clearTerminal();
-            moveCursorTo(rows / 2, cols / 2 - 20);
-            cout << "Enter snake speed in ms (50-500, lower = faster)): ";
-            cout.flush();
-
-            int value = getRawNumberInput(50, 500);
-            snakeSpeed = value * 1000;
-
-            moveCursorTo(rows / 2 + 1, cols / 2 - 10);
-            cout << "Speed updated to " << value << " ms!";
-            cout.flush();
-            usleep(500000);
-            clearTerminal();
+            changeSnakeSpeed();
         }
         else if (ch == '2')
         {
