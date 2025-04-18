@@ -129,11 +129,11 @@ void drawSidebar(int borderTop, int borderLeft)
 {
     for (int i = 0; i < 6; ++i)
     {
-        moveCursorTo(top + i, 2);
+        moveCursorTo(borderTop + i, 2);
         cout << "                      "; // Clear line
     }
 
-    moveCursorTo(top, 2);
+    moveCursorTo(borderTop, 2);
     setTextColor(FOREGROUND_INTENSITY | FOREGROUND_BLUE);
     cout << "=== INFO ===";
 
@@ -146,7 +146,7 @@ void drawSidebar(int borderTop, int borderLeft)
     int minutes = playTime.count() / 60;
     int seconds = playTime.count() % 60;
 
-    moveCursorTo(top + 4, 2);
+    moveCursorTo(borderTop + 4, 2);
     setTextColor(FOREGROUND_WHITE);
     printf("Time: %02d:%02d", minutes, seconds);
 
