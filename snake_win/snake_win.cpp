@@ -225,8 +225,10 @@ void UpdateSnake(int borderTop, int borderLeft)
     int newCol = currentHead.second + dy;
     pair<int, int> newHead = {newRow, newCol};
 
-    if (newRow < borderTop || newRow >= borderTop + borderHeight ||
-        newCol <= borderLeft || newCol >= borderLeft + borderWidth ||
+    if (newRow < borderTop ||
+        newRow >= borderTop + borderHeight ||
+        newCol <= borderLeft ||
+        newCol >= borderLeft + borderWidth ||
         snakeBody.count(newHead))
     {
         playerLost = true;
@@ -286,24 +288,21 @@ bool gameOverScreen()
 
     while (true)
     {
-        if (_kbhit())
+        char ch = _getch();
+        if (ch == '1')
         {
-            char ch = _getch();
-            if (ch == '1')
-            {
-                run = true;
-                score = 0;
-                dir = Direction::RIGHT;
-                foodPositions.clear();
-                head = tail = snakeSize = 0;
-                snakeBody.clear();
-                clearScreen();
-                return true;
-            }
-            else if (ch == '2')
-            {
-                return false;
-            }
+            run = true;
+            score = 0;
+            dir = Direction::RIGHT;
+            foodPositions.clear();
+            head = tail = snakeSize = 0;
+            snakeBody.clear();
+            clearScreen();
+            return true;
+        }
+        else if (ch == '2')
+        {
+            return false;
         }
         Sleep(50);
     }
@@ -317,36 +316,34 @@ void changeSnakeSpeed()
     cout << "Choose your speed level (1-4, 1 = slowest, 4 = fastest)): ";
     cout.flush();
     bool correctInput = false;
+    char ch;
 
     while (correctInput == false)
     {
-        char ch;
-        if (_kbhit())
-        {
-            ch = _getch();
+        ch = _getch();
 
-            switch (ch)
-            {
-            case '1':
-                snakeSpeed = 500000;
-                correctInput = true;
-                break;
-            case '2':
-                snakeSpeed = 250000;
-                correctInput = true;
-                break;
-            case '3':
-                snakeSpeed = 100000;
-                correctInput = true;
-                break;
-            case '4':
-                snakeSpeed = 50000;
-                correctInput = true;
-                break;
-            default:
-                break;
-            }
+        switch (ch)
+        {
+        case '1':
+            snakeSpeed = 500000;
+            correctInput = true;
+            break;
+        case '2':
+            snakeSpeed = 250000;
+            correctInput = true;
+            break;
+        case '3':
+            snakeSpeed = 100000;
+            correctInput = true;
+            break;
+        case '4':
+            snakeSpeed = 50000;
+            correctInput = true;
+            break;
+        default:
+            break;
         }
+
         if (!correctInput)
         {
             setTextColor(FOREGROUND_WHITE);
@@ -366,23 +363,29 @@ void settingsMenu()
     while (true)
     {
         clearScreen();
+
         moveCursorTo(rows / 2 - 2, cols / 2 - 10);
         setTextColor(FOREGROUND_WHITE);
         cout << "=== SETTINGS ===";
+
         moveCursorTo(rows / 2 - 1, cols / 2 - 10);
         setTextColor(FOREGROUND_WHITE);
         cout << "1. Snake Speed";
+
         moveCursorTo(rows / 2, cols / 2 - 10);
         setTextColor(FOREGROUND_WHITE);
         cout << "2. Snake Color";
+
         moveCursorTo(rows / 2 + 1, cols / 2 - 10);
         setTextColor(FOREGROUND_WHITE);
         cout << "3. Food Color";
+
         moveCursorTo(rows / 2 + 2, cols / 2 - 10);
         setTextColor(FOREGROUND_WHITE);
         cout << "4. Food Amount (current: " << foodCount << ")";
-        setTextColor(FOREGROUND_WHITE);
+
         moveCursorTo(rows / 2 + 3, cols / 2 - 10);
+        setTextColor(FOREGROUND_WHITE);
         cout << "5. Back to Pause Menu";
         cout.flush();
 
