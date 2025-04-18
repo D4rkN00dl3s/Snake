@@ -68,6 +68,15 @@ void setTextColor(WORD color) {
     SetConsoleTextAttribute(hConsole, color);
 }
 
+void resizeConsoleWindow(int width, int height) {
+    HWND console = GetConsoleWindow();
+    RECT r;
+    GetWindowRect(console, &r); // get current window size
+
+    // Resize window
+    MoveWindow(console, r.left, r.top, width, height, TRUE);
+}
+
 void DrawBorders(int borderTop, int borderLeft) {
     for (int i = 0; i <= borderHeight; i++) {
         moveCursorTo(borderTop + i, borderLeft);
@@ -273,6 +282,8 @@ void gameLoop(int borderTop, int borderLeft) {
 
 int main() {
     int borderTop, borderLeft;
+
+    resizeConsoleWindow(800, 600);
 
     while (true) {
         initializeGame(borderTop, borderLeft);
