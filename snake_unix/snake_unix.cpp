@@ -80,6 +80,16 @@ void hideCursor()
     fflush(stdout);
 }
 
+void resizeTerminal(int cols, int rows) {
+    struct winsize w;
+    w.ws_col = cols;
+    w.ws_row = rows;
+    w.ws_xpixel = 0;
+    w.ws_ypixel = 0;
+
+    ioctl(STDOUT_FILENO, TIOCSWINSZ, &w);
+}
+
 void getTerminalSize(int &rows, int &cols)
 {
     struct winsize w;
@@ -626,6 +636,7 @@ void initializeTerminal()
     enableRawMode();
     setNonBlockingInput();
     hideCursor();
+    resizeTerminal(120, 30);
     getTerminalSize(rows, cols);
 }
 
