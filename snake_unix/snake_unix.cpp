@@ -11,39 +11,42 @@
 
 using namespace std;
 
-// Global Variables
-const int MAX_SNAKE_LENGTH = 1000;
-int rows = 0, cols = 0;
-int borderWidth = 60;
-int borderHeight = 20;
-unsigned int score = 0;
-enum class Direction
-{
-    UP,
-    DOWN,
-    LEFT,
-    RIGHT
-};
-Direction dir = Direction::RIGHT;
-bool run = true;
-bool playerLost = false;
+// Constants
+constexpr int MAX_SNAKE_LENGTH = 1000;
+constexpr int DEFAULT_BORDER_WIDTH = 60;
+constexpr int DEFAULT_BORDER_HEIGHT = 20;
+constexpr int MAX_ATTEMPTS = 500;
 
-// Settings Variables
+// Game State
+int borderWidth = DEFAULT_BORDER_WIDTH;
+int borderHeight = DEFAULT_BORDER_HEIGHT;
+int rows = 0, cols = 0;
+unsigned int score = 0;
+bool run = true, playerLost = false;
+
+// Terminal Settings
+struct termios original_termios;
+
+// Snake Configuration
 int snakeSpeed = 150000;
 string snakeColor = "\033[32m";
 string foodColor = "\033[31m";
 int foodCount = 1;
 vector<pair<int, int>> foodPositions;
 
+// Snake Data Structures
+pair<int, int> snakeBuffer[MAX_SNAKE_LENGTH];
+int head = 0, tail = 0, snakeSize = 0;
+
+enum class Direction{ UP, DOWN, LEFT, RIGHT };
+Direction dir = Direction::RIGHT;
+
 // Clock For Timer
 chrono::steady_clock::time_point gameStart;
 chrono::steady_clock::time_point pauseStart;
 chrono::steady_clock::duration totalPausedTime = chrono::seconds(0);
 
-pair<int, int> snakeBuffer[MAX_SNAKE_LENGTH];
-int head = 0, tail = 0, snakeSize = 0;
-
-struct pair_hash
+struct pairHash
 {
     size_t operator()(const pair<int, int> &p) const
     {
@@ -51,9 +54,10 @@ struct pair_hash
     }
 };
 
-unordered_set<pair<int, int>, pair_hash> snakeBody;
+unordered_set<pair<int, int>, pairHash> snakeBody;
 
 int mod(int x) { return (x + MAX_SNAKE_LENGTH) % MAX_SNAKE_LENGTH; }
+
 void push_front(pair<int, int> pos)
 {
     head = mod(head - 1);
@@ -61,35 +65,22 @@ void push_front(pair<int, int> pos)
     snakeSize++;
     snakeBody.insert(pos);
 }
+
 void pop_back()
 {
     tail = mod(tail - 1);
     snakeBody.erase(snakeBuffer[tail]);
     snakeSize--;
 }
+
 pair<int, int> get_front() { return snakeBuffer[head]; }
 pair<int, int> get_back() { return snakeBuffer[mod(tail - 1)]; }
 
-struct termios original_termios;
-
+// Terminal Control
 void clearTerminal() { printf("\033[H\033[J"); }
 void moveCursorTo(int row, int col) { printf("\033[%d;%dH", row, col); }
-void hideCursor()
-{
-    printf("\033[?25l");
-    fflush(stdout);
-}
-
-void resizeTerminal(int cols, int rows)
-{
-    struct winsize w;
-    w.ws_col = cols;
-    w.ws_row = rows;
-    w.ws_xpixel = 0;
-    w.ws_ypixel = 0;
-
-    ioctl(STDOUT_FILENO, TIOCSWINSZ, &w);
-}
+void hideCursor(){ printf("\033[?25l"); fflush(stdout);}
+void showCursor() { printf("\033[?25h"); fflush(stdout); }
 
 void getTerminalSize(int &rows, int &cols)
 {
@@ -161,7 +152,7 @@ char getInput()
     return '\0';
 }
 
-void DrawBorders(int top, int left)
+void drawBorders(int top, int left)
 {
     string border(static_cast<size_t>(borderWidth), '_');
     moveCursorTo(top - 1, left);
@@ -262,13 +253,12 @@ bool gameOverScreen()
     }
 }
 
-void CreateFood(int top, int left)
+void createFood(int top, int left)
 {
     int toSpawn = foodCount - static_cast<int>(foodPositions.size());
     int attempts = 0;
-    const int maxAttempts = 500;
 
-    while (toSpawn > 0 && attempts < maxAttempts)
+    while (toSpawn > 0 && attempts < MAX_ATTEMPTS)
     {
         int fx = left + 1 + rand() % (borderWidth - 2);
         int fy = top + 1 + rand() % (borderHeight - 2);
@@ -295,7 +285,7 @@ void CreateFood(int top, int left)
     cout.flush();
 }
 
-void DrawSnake()
+void drawSnake()
 {
     for (int i = 0; i < snakeSize; ++i)
     {
@@ -537,8 +527,8 @@ void pauseMenu()
         {
             totalPausedTime += chrono::steady_clock::now() - pauseStart;
             clearTerminal();
-            DrawBorders((rows - borderHeight) / 2, (cols - borderWidth) / 2);
-            DrawSnake();
+            drawBorders((rows - borderHeight) / 2, (cols - borderWidth) / 2);
+            drawSnake();
             for (const auto &food : foodPositions)
             {
                 moveCursorTo(food.first, food.second);
@@ -595,7 +585,7 @@ void handleInput(char ch)
         run = false;
 }
 
-void UpdateSnake(int top, int left)
+void updateSnake(int top, int left)
 {
     int dx = 0, dy = 0;
     switch (dir)
@@ -644,7 +634,7 @@ void UpdateSnake(int top, int left)
 
     if (ate)
     {
-        CreateFood(top, left);
+        createFood(top, left);
     }
     else
     {
@@ -653,7 +643,7 @@ void UpdateSnake(int top, int left)
         pop_back();
     }
 
-    DrawSnake();
+    drawSnake();
 }
 
 void initializeTerminal()
@@ -662,7 +652,6 @@ void initializeTerminal()
     enableRawMode();
     setNonBlockingInput();
     hideCursor();
-    resizeTerminal(120, 30);
     getTerminalSize(rows, cols);
 }
 
@@ -672,7 +661,7 @@ void initializeGame(int &top, int &left)
     top = (rows - borderHeight) / 2;
     left = (cols - borderWidth) / 2;
 
-    DrawBorders(top, left);
+    drawBorders(top, left);
 
     int midRow = rows / 2;
     int midCol = cols / 2;
@@ -683,7 +672,7 @@ void initializeGame(int &top, int &left)
     cout << "S" << endl;
 
     srand(static_cast<unsigned int>(time(0)));
-    CreateFood(top, left);
+    createFood(top, left);
 
     gameStart = chrono::steady_clock::now();
 }
@@ -696,7 +685,7 @@ void gameLoop(int top, int left)
         if (ch)
             handleInput(ch);
 
-        UpdateSnake(top, left);
+        updateSnake(top, left);
         drawSidebar(top, left);
         usleep(snakeSpeed);
     }
