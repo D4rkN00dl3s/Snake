@@ -1,13 +1,127 @@
 #include <iostream>
 #include <vector>
 #include <unordered_set>
+#include <deque>
 #include <ctime>
 #include <chrono>
 #include <unistd.h>
 #include <termios.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
+#include <sys/select.h>
 #include <algorithm>
+// persistence
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <fstream>
+#include <sstream>
+#include <cstdlib>
+
+// Optional SDL2 audio support. Define USE_SDL_AUDIO when compiling to enable.
+#ifdef USE_SDL_AUDIO
+#include <SDL2/SDL.h>
+static bool audioInited = false;
+static SDL_AudioDeviceID audioDevice = 0;
+static SDL_AudioSpec eatSpec, crashSpec;
+static Uint8 *eatBuf = nullptr;
+static Uint32 eatLen = 0;
+static Uint8 *crashBuf = nullptr;
+static Uint32 crashLen = 0;
+
+bool initAudio()
+{
+    if (SDL_Init(SDL_INIT_AUDIO) != 0)
+        return false;
+
+    // load WAVs from assets/ (user must add these files)
+    if (SDL_LoadWAV("assets/eat.wav", &eatSpec, &eatBuf, &eatLen) == NULL)
+    {
+        // continue but mark uninitialized
+        eatBuf = nullptr;
+        eatLen = 0;
+    }
+
+    if (SDL_LoadWAV("assets/crash.wav", &crashSpec, &crashBuf, &crashLen) == NULL)
+    {
+        crashBuf = nullptr;
+        crashLen = 0;
+    }
+
+    SDL_AudioSpec want = {0};
+    if (eatBuf)
+        want = eatSpec;
+    else if (crashBuf)
+        want = crashSpec;
+    else
+        want.freq = 48000, want.format = AUDIO_S16LSB, want.channels = 2, want.samples = 4096;
+
+    audioDevice = SDL_OpenAudioDevice(NULL, 0, &want, NULL, 0);
+    if (audioDevice == 0)
+    {
+        // audio not available
+        if (eatBuf) SDL_FreeWAV(eatBuf);
+        if (crashBuf) SDL_FreeWAV(crashBuf);
+        eatBuf = crashBuf = nullptr;
+        eatLen = crashLen = 0;
+        SDL_Quit();
+        return false;
+    }
+
+    SDL_PauseAudioDevice(audioDevice, 0);
+    audioInited = true;
+    return true;
+}
+
+void playBuffer(Uint8 *buf, Uint32 len)
+{
+    if (!audioInited || !buf || len == 0)
+        return;
+    SDL_ClearQueuedAudio(audioDevice);
+    SDL_QueueAudio(audioDevice, buf, len);
+}
+
+void playEatSound() { playBuffer(eatBuf, eatLen); }
+void playCrashSound() { playBuffer(crashBuf, crashLen); }
+
+void shutdownAudio()
+{
+    if (eatBuf) SDL_FreeWAV(eatBuf);
+    if (crashBuf) SDL_FreeWAV(crashBuf);
+    if (audioDevice) SDL_CloseAudioDevice(audioDevice);
+    SDL_Quit();
+}
+#else
+// Fallback audio using external players (aplay/paplay/play). Non-blocking via fork().
+static bool audioFallbackAvailable = false;
+
+bool initAudio()
+{
+    // check if any player is available and assets exist
+    bool playerExists = (access("/usr/bin/aplay", X_OK) == 0) || (access("/usr/bin/paplay", X_OK) == 0) || (access("/usr/bin/play", X_OK) == 0);
+    struct stat st;
+    bool filesExist = (stat("assets/eat.wav", &st) == 0) || (stat("assets/crash.wav", &st) == 0);
+    audioFallbackAvailable = playerExists && filesExist;
+    return audioFallbackAvailable;
+}
+
+static void spawnPlayer(const char *file)
+{
+    if (!audioFallbackAvailable) return;
+    pid_t pid = fork();
+    if (pid == 0)
+    {
+        // try aplay, paplay, then play
+        execlp("aplay", "aplay", "-q", file, (char *)NULL);
+        execlp("paplay", "paplay", file, (char *)NULL);
+        execlp("play", "play", "-q", file, (char *)NULL);
+        _exit(1);
+    }
+}
+
+void playEatSound() { spawnPlayer("assets/eat.wav"); }
+void playCrashSound() { spawnPlayer("assets/crash.wav"); }
+void shutdownAudio() { /* nothing to do for spawn fallback */ }
+#endif
 
 using namespace std;
 
@@ -23,6 +137,65 @@ int borderHeight = DEFAULT_BORDER_HEIGHT;
 int rows = 0, cols = 0;
 unsigned int score = 0;
 bool run = true, playerLost = false;
+int lives = 3;
+int level = 1;
+
+// Gameplay flags
+bool wrapAround = false;
+unsigned int highScore = 0;
+std::vector<unsigned int> highScores;
+const size_t HIGH_SCORES_MAX = 5;
+
+// forward declarations for functions used before their definitions
+void saveConfig();
+void clearTerminal();
+void moveCursorTo(int row, int col);
+char getInput();
+
+void updateHighScores(unsigned int sc)
+{
+    highScores.push_back(sc);
+    sort(highScores.begin(), highScores.end(), greater<unsigned int>());
+    if (highScores.size() > HIGH_SCORES_MAX)
+        highScores.resize(HIGH_SCORES_MAX);
+    if (!highScores.empty())
+        highScore = highScores[0];
+    saveConfig();
+}
+
+void showHighScores()
+{
+    clearTerminal();
+    int centerRow = rows / 2 - 3;
+    int centerCol = cols / 2 - 10;
+    moveCursorTo(centerRow, centerCol);
+    cout << "\033[36m=== HIGH SCORES ===\033[0m";
+    if (highScores.empty())
+    {
+        moveCursorTo(centerRow + 2, centerCol);
+        cout << "(no high scores yet)";
+    }
+    else
+    {
+        for (size_t i = 0; i < highScores.size(); ++i)
+        {
+            moveCursorTo(centerRow + 2 + (int)i, centerCol);
+            cout << (i + 1) << ". " << highScores[i];
+        }
+    }
+    moveCursorTo(centerRow + 2 + (int)highScores.size() + 2, centerCol);
+    cout << "Press any key to continue...";
+    cout.flush();
+    // wait for a key
+    while (true)
+    {
+        char ch = getInput();
+        if (ch)
+            break;
+        usleep(10000);
+    }
+    clearTerminal();
+}
 
 // Terminal Settings
 struct termios original_termios;
@@ -35,8 +208,7 @@ int foodCount = 1;
 vector<pair<int, int>> foodPositions;
 
 // Snake Data Structures
-pair<int, int> snakeBuffer[MAX_SNAKE_LENGTH];
-int head = 0, tail = 0, snakeSize = 0;
+std::deque<pair<int, int>> snake;
 
 enum class Direction{ UP, DOWN, LEFT, RIGHT };
 Direction dir = Direction::RIGHT;
@@ -56,25 +228,118 @@ struct pairHash
 
 unordered_set<pair<int, int>, pairHash> snakeBody;
 
-int mod(int x) { return (x + MAX_SNAKE_LENGTH) % MAX_SNAKE_LENGTH; }
+// Config filenames and persistence helpers
+static const char *APP_DIR_NAME = "Snake";
+static const char *CONFIG_FILE_NAME = "config.ini";
+
+std::string getDataDir()
+{
+    const char *xdg = getenv("XDG_DATA_HOME");
+    std::string base;
+    if (xdg && xdg[0] != '\0')
+        base = xdg;
+    else
+    {
+        const char *home = getenv("HOME");
+        if (!home)
+            home = ".";
+        base = std::string(home) + "/.local/share";
+    }
+    return base + "/" + APP_DIR_NAME;
+}
+
+std::string getConfigPath()
+{
+    return getDataDir() + "/" + CONFIG_FILE_NAME;
+}
+
+void saveConfig()
+{
+    std::string dir = getDataDir();
+    mkdir(dir.c_str(), 0755);
+    std::ofstream ofs(getConfigPath());
+    if (!ofs)
+        return;
+
+    ofs << "high_score=" << highScore << "\n";
+    // save list top scores
+    ofs << "high_scores=";
+    for (size_t i = 0; i < highScores.size(); ++i)
+    {
+        if (i) ofs << ",";
+        ofs << highScores[i];
+    }
+    ofs << "\n";
+    ofs << "wrap_around=" << (wrapAround ? 1 : 0) << "\n";
+    ofs << "snake_speed=" << snakeSpeed << "\n";
+    ofs << "food_count=" << foodCount << "\n";
+    ofs << "snake_color=" << snakeColor << "\n";
+    ofs << "food_color=" << foodColor << "\n";
+    ofs.close();
+}
+
+void loadConfig()
+{
+    std::ifstream ifs(getConfigPath());
+    if (!ifs)
+        return;
+
+    std::string line;
+    while (std::getline(ifs, line))
+    {
+        std::istringstream iss(line);
+        std::string key;
+        if (!std::getline(iss, key, '='))
+            continue;
+        std::string value;
+        if (!std::getline(iss, value))
+            continue;
+
+        if (key == "high_score")
+            highScore = static_cast<unsigned int>(std::stoul(value));
+        else if (key == "high_scores")
+        {
+            highScores.clear();
+            std::istringstream lv(value);
+            std::string tok;
+            while (std::getline(lv, tok, ','))
+            {
+                if (!tok.empty())
+                    highScores.push_back(static_cast<unsigned int>(std::stoul(tok)));
+            }
+        }
+        else if (key == "wrap_around")
+            wrapAround = (value == "1");
+        else if (key == "snake_speed")
+            snakeSpeed = std::stoi(value);
+        else if (key == "food_count")
+            foodCount = std::stoi(value);
+        else if (key == "snake_color")
+            snakeColor = value;
+        else if (key == "food_color")
+            foodColor = value;
+    }
+    ifs.close();
+    // If the file only had a scalar high_score, ensure highScores vector is populated
+    if (highScores.empty() && highScore > 0)
+        highScores.push_back(highScore);
+}
 
 void push_front(pair<int, int> pos)
 {
-    head = mod(head - 1);
-    snakeBuffer[head] = pos;
-    snakeSize++;
+    snake.push_front(pos);
     snakeBody.insert(pos);
 }
 
 void pop_back()
 {
-    tail = mod(tail - 1);
-    snakeBody.erase(snakeBuffer[tail]);
-    snakeSize--;
+    auto back = snake.back();
+    snakeBody.erase(back);
+    snake.pop_back();
 }
 
-pair<int, int> get_front() { return snakeBuffer[head]; }
-pair<int, int> get_back() { return snakeBuffer[mod(tail - 1)]; }
+pair<int, int> get_front() { return snake.front(); }
+pair<int, int> get_back() { return snake.back(); }
 
 // Terminal Control
 void clearTerminal() { printf("\033[H\033[J"); }
@@ -117,39 +382,55 @@ void setNonBlockingInput()
 
 char getInput()
 {
+    fd_set readfds;
+    FD_ZERO(&readfds);
+    FD_SET(STDIN_FILENO, &readfds);
+
+    struct timeval tv = {0, 0}; // non-blocking poll
+    int rv = select(STDIN_FILENO + 1, &readfds, NULL, NULL, &tv);
+    if (rv <= 0)
+        return '\0';
+
     char ch;
-    if (read(STDIN_FILENO, &ch, 1) == 1)
+    ssize_t n = read(STDIN_FILENO, &ch, 1);
+    if (n != 1)
+        return '\0';
+
+    if (ch == '\033') // possible ESC or arrow key
     {
-        if (ch == '\033') // possible ESC or arrow key
+        // wait briefly for the rest of the sequence
+        FD_ZERO(&readfds);
+        FD_SET(STDIN_FILENO, &readfds);
+        struct timeval tv2;
+        tv2.tv_sec = 0;
+        tv2.tv_usec = 30000; // 30ms
+        int rv2 = select(STDIN_FILENO + 1, &readfds, NULL, NULL, &tv2);
+        if (rv2 <= 0)
         {
-            // Wait 30ms to see if more characters follow
-            usleep(30000);
+            return '\033'; // standalone ESC
+        }
 
-            char seq[2];
-            int n = read(STDIN_FILENO, seq, 2);
-
-            if (n == 0)
+        char seq[2] = {0, 0};
+        ssize_t m = read(STDIN_FILENO, seq, 2);
+        if (m == 2 && seq[0] == '[')
+        {
+            switch (seq[1])
             {
-                return '\033'; // ESC key pressed
-            }
-            else if (n == 2 && seq[0] == '[')
-            {
-                switch (seq[1])
-                {
-                case 'A':
-                    return 'w'; // Up
-                case 'B':
-                    return 's'; // Down
-                case 'C':
-                    return 'd'; // Right
-                case 'D':
-                    return 'a'; // Left
-                }
+            case 'A':
+                return 'w'; // Up
+            case 'B':
+                return 's'; // Down
+            case 'C':
+                return 'd'; // Right
+            case 'D':
+                return 'a'; // Left
             }
         }
-        return ch;
+
+        return '\033';
     }
-    return '\0';
+
+    return ch;
 }
 
 void drawBorders(int top, int left)
@@ -172,19 +453,38 @@ void drawBorders(int top, int left)
 
 void drawSidebar(int top, int left)
 {
-    moveCursorTo(top, 2);
-    cout << "\033[36m=== INFO ===\033[0m";
+    // HUD in two columns: stats (left) and controls (right)
+    int leftCol = 2;
+    int rightCol = max(left + borderWidth + 4, leftCol + 24);
 
-    moveCursorTo(top + 2, 2);
-    cout << "Score: " << score;
+    moveCursorTo(top, leftCol);
+    cout << "\033[36m=== INFO ===\033[0m";
 
     auto now = chrono::steady_clock::now();
     auto playTime = chrono::duration_cast<chrono::seconds>(now - gameStart - totalPausedTime);
     int minutes = playTime.count() / 60;
     int seconds = playTime.count() % 60;
 
-    moveCursorTo(top + 4, 2);
+    moveCursorTo(top + 1, leftCol);
+    printf("Score: %u", score);
+    moveCursorTo(top + 2, leftCol);
+    printf("High:  %u", highScore);
+    moveCursorTo(top + 3, leftCol);
+    printf("Lives: %d", lives);
+    moveCursorTo(top + 4, leftCol);
+    printf("Level: %d", level);
+    moveCursorTo(top + 5, leftCol);
     printf("Time: %02d:%02d", minutes, seconds);
+
+    // Controls column
+    moveCursorTo(top + 1, rightCol);
+    cout << "Controls:";
+    moveCursorTo(top + 2, rightCol);
+    cout << "WASD - Move";
+    moveCursorTo(top + 3, rightCol);
+    cout << "Esc  - Pause";
+    moveCursorTo(top + 4, rightCol);
+    cout << "Q    - Quit";
 
     cout.flush();
 }
@@ -214,6 +514,12 @@ bool gameOverScreen()
     moveCursorTo(centerRow, centerCol);
     cout << "Your final score: " << score;
 
+    // update high score immediately so it's saved regardless of user's choice
+    if (score > highScore)
+    {
+        updateHighScores(score);
+    }
+
     moveCursorTo(centerRow + 2, centerCol);
     cout << "1. Restart";
 
@@ -227,6 +533,7 @@ bool gameOverScreen()
         char ch = getInput();
         if (ch == '1')
         {
+            clearTerminal();
             // Countdown animation
             for (int i = 3; i >= 1; --i)
             {
@@ -240,7 +547,7 @@ bool gameOverScreen()
             score = 0;
             dir = Direction::RIGHT;
             foodPositions.clear();
-            head = tail = snakeSize = 0;
+            snake.clear();
             snakeBody.clear();
             clearTerminal();
             return true; // Restart
@@ -287,14 +594,14 @@ void createFood(int top, int left)
 
 void drawSnake()
 {
-    for (int i = 0; i < snakeSize; ++i)
+    for (const auto &pos : snake)
     {
-        auto pos = snakeBuffer[mod(head + i)];
         moveCursorTo(pos.first, pos.second);
         cout << snakeColor << "S" << "\033[0m";
     }
     cout.flush();
 }
+
 
 Direction charToDirection(char ch)
 {
@@ -395,6 +702,7 @@ void changeSnakeSpeed()
     moveCursorTo(rows / 2 + 1, cols / 2 - 10);
     cout << "Speed updated to " << snakeSpeed << " ms!";
     cout.flush();
+    saveConfig();
     usleep(500000);
     clearTerminal();
 }
@@ -415,7 +723,11 @@ void settingsMenu()
         moveCursorTo(rows / 2 + 2, cols / 2 - 10);
         cout << "4. Food Amount (current: " << foodCount << ")";
         moveCursorTo(rows / 2 + 3, cols / 2 - 10);
-        cout << "5. Back to Pause Menu";
+        cout << "5. Wrap-around (current: " << (wrapAround ? "On" : "Off") << ")";
+        moveCursorTo(rows / 2 + 4, cols / 2 - 10);
+        cout << "6. Back to Pause Menu";
+            moveCursorTo(rows / 2 + 5, cols / 2 - 10);
+            cout << "7. View High Scores";
         cout.flush();
 
         char ch = getInput();
@@ -450,6 +762,7 @@ void settingsMenu()
             moveCursorTo(rows / 2 + 1, cols / 2 - 10);
             cout << "Color changed!";
             cout.flush();
+            saveConfig();
             usleep(500000);
             clearTerminal();
         }
@@ -476,6 +789,7 @@ void settingsMenu()
             moveCursorTo(rows / 2 + 1, cols / 2 - 10);
             cout << "Color changed!";
             cout.flush();
+            saveConfig();
             usleep(500000);
             clearTerminal();
         }
@@ -496,11 +810,26 @@ void settingsMenu()
             moveCursorTo(rows / 2 + 1, cols / 2 - 10);
             cout << "Food count updated!";
             cout.flush();
+            saveConfig();
             usleep(500000);
             clearTerminal();
         }
         else if (ch == '5')
+        {
+            wrapAround = !wrapAround;
+            moveCursorTo(rows / 2 + 5, cols / 2 - 10);
+            cout << "Wrap-around " << (wrapAround ? "enabled" : "disabled") << "!";
+            cout.flush();
+            saveConfig();
+            usleep(500000);
+            clearTerminal();
+        }
+        else if (ch == '6')
             break;
+        else if (ch == '7')
+        {
+            showHighScores();
+        }
         usleep(200000);
     }
 }
@@ -607,15 +936,48 @@ void updateSnake(int top, int left)
     pair<int, int> currentHead = get_front();
     int newRow = currentHead.first + dx;
     int newCol = currentHead.second + dy;
+    // compute interior bounds
+    int minRow = top + 1;
+    int maxRow = top + borderHeight - 1;
+    int minCol = left + 1;
+    int maxCol = left + borderWidth - 1;
+
+    if (wrapAround)
+    {
+        if (newRow < minRow)
+            newRow = maxRow;
+        else if (newRow > maxRow)
+            newRow = minRow;
+
+        if (newCol < minCol)
+            newCol = maxCol;
+        else if (newCol > maxCol)
+            newCol = minCol;
+    }
+
     pair<int, int> newHead = {newRow, newCol};
 
-    if (newRow < top || newRow >= top + borderHeight ||
-        newCol <= left || newCol >= left + borderWidth ||
-        snakeBody.count(newHead))
+    if (!wrapAround)
     {
-        playerLost = true;
-        run = false;
-        return;
+        if (newRow < minRow || newRow > maxRow ||
+            newCol < minCol || newCol > maxCol ||
+            snakeBody.count(newHead))
+        {
+            playerLost = true;
+            run = false;
+            playCrashSound();
+            return;
+        }
+    }
+    else
+    {
+        if (snakeBody.count(newHead))
+        {
+            playerLost = true;
+            run = false;
+            playCrashSound();
+            return;
+        }
     }
 
     bool ate = false;
@@ -624,6 +986,7 @@ void updateSnake(int top, int left)
         if (newRow == foodPositions[i].first && newCol == foodPositions[i].second)
         {
             score++;
+                playEatSound();
             ate = true;
             foodPositions.erase(foodPositions.begin() + i); // Remove eaten food
             break;
@@ -693,7 +1056,10 @@ void gameLoop(int top, int left)
 
 int main()
 {
+    loadConfig();
     initializeTerminal();
+    // try to initialize audio (optional). Requires SDL2 and WAV files at assets/*.wav
+    initAudio();
 
     while (true)
     {
@@ -712,5 +1078,6 @@ int main()
         }
     }
 
+    shutdownAudio();
     return 0;
 }
